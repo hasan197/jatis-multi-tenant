@@ -1,0 +1,25 @@
+app:
+  name: sample-stack
+  port: 8080
+
+database:
+  host: postgres
+  port: 5432
+  user: postgres
+  password: postgres
+  name: sample_db
+
+redis:
+  host: redis
+  port: 6379
+
+rabbitmq:
+  host: rabbitmq
+  port: 5672
+  user: guest
+  password: guest
+
+logging:
+  level: debug
+  format: json
+  output: stdout 

@@ -1,0 +1,32 @@
+services:
+  backend-golang:
+    build:
+      context: ./backend-golang
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend-golang:/app
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    environment:
+      - GO_ENV=development
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=sample_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+
+  frontend-react:
+    volumes:
+      - ./frontend-react:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    command: npm run dev -- --host 0.0.0.0 

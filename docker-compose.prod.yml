@@ -1,0 +1,47 @@
+services:
+  backend-golang:
+    build:
+      context: ./backend-golang
+      dockerfile: Dockerfile
+      target: production
+    environment:
+      - GO_ENV=production
+    volumes:
+      - ./config:/app/config
+    restart: always
+    
+  backend-nodejs:
+    build:
+      context: ./backend-nodejs
+      dockerfile: Dockerfile
+      target: production
+    environment:
+      - NODE_ENV=production
+      - GOLANG_API_URL=http://backend-golang:8080
+    restart: always
+    
+  frontend-react:
+    build:
+      context: ./frontend-react
+      dockerfile: Dockerfile
+      target: production
+    environment:
+      - NODE_ENV=production
+    restart: always
+
+  postgres:
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    
+  redis:
+    restart: always
+    volumes:
+      - redis_data:/data
+    
+  rabbitmq:
+    restart: always
+
+volumes:
+  postgres_data:
+  redis_data: 

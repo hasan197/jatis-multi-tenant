@@ -1,0 +1,52 @@
+# Golang
+/backend-golang/tmp/
+/backend-golang/vendor/
+/backend-golang/.env
+/backend-golang/.env.local
+/backend-golang/bin/
+/backend-golang/**/*.test
+/backend-golang/**/*.out
+/backend-golang/**/*.log
+
+# Node.js
+/backend-nodejs/node_modules/
+/backend-nodejs/dist/
+/backend-nodejs/coverage/
+/backend-nodejs/.env
+/backend-nodejs/.env.local
+/backend-nodejs/npm-debug.log*
+/backend-nodejs/yarn-debug.log*
+/backend-nodejs/yarn-error.log*
+
+# React
+/frontend-react/node_modules/
+/frontend-react/build/
+/frontend-react/coverage/
+/frontend-react/.env
+/frontend-react/.env.local
+/frontend-react/.env.development.local
+/frontend-react/.env.test.local
+/frontend-react/.env.production.local
+/frontend-react/npm-debug.log*
+/frontend-react/yarn-debug.log*
+/frontend-react/yarn-error.log*
+
+# Editor directories and files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker/data/
+
+# Logs
+logs/
+*.log 
