@@ -42,7 +42,7 @@ services:
     build:
       context: ./backend-nodejs
       dockerfile: Dockerfile
-      target: development
+      target: ${NODE_TARGET:-development}
     ports:
       - "3000:3000"
     volumes:
@@ -62,7 +62,7 @@ services:
     build:
       context: ./frontend-react
       dockerfile: Dockerfile
-      target: development
+      target: ${NODE_TARGET:-development}
     ports:
       - "5173:5173"
     volumes:
