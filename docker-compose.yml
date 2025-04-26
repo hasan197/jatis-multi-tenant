@@ -47,7 +47,7 @@ services:
       - "3000:3000"
     volumes:
       - ./backend-nodejs:/app
-      - /app/node_modules
+      - ./backend-nodejs/node_modules:/app/node_modules
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - GOLANG_API_URL=http://backend-golang:8080
@@ -67,7 +67,8 @@ services:
       - "5173:5173"
     volumes:
       - ./frontend-react:/app
-      - /app/node_modules
+      # Comment out node_modules volume mount untuk menghindari konflik
+      # - ./frontend-react/node_modules:/app/node_modules
     environment:
       - NODE_ENV=${NODE_ENV:-development}
     command: npm run dev -- --host 0.0.0.0

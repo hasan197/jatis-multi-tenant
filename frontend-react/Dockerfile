@@ -4,13 +4,13 @@ RUN apk add --no-cache npm
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files first (lebih baik untuk caching Docker)
 COPY package*.json ./
 
 # Install dependencies
 RUN npm install
 
-# Copy source code
+# Copy source code setelah install dependencies
 COPY . .
 
 # Build the application
@@ -18,18 +18,24 @@ RUN npm run build
 
 # Development stage
 FROM node:18-alpine AS development
-RUN apk add --no-cache npm  # Tambahkan baris ini
+RUN apk add --no-cache npm
 
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install && \
-    npm install -g vite
+# Install dependencies terlebih dahulu
+RUN npm install
 
-# Copy source code
+# Install vite sebagai dependency global setelah install local dependencies
+RUN npm install -g vite@5.0.12
+
+# Install icons material yang sering menyebabkan masalah
+RUN npm install @mui/icons-material
+
+# Copy source code setelah install dependencies
+# Tetapi exclude node_modules dengan .dockerignore
 COPY . .
 
 # Expose port

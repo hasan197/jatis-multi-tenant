@@ -8,8 +8,7 @@ import {
   Paper,
   Grid,
   Alert,
-  CircularProgress,
-  Snackbar
+  CircularProgress
 } from '@mui/material';
 
 import { getUserById, updateUser, UpdateUserPayload } from '../services/userService';
