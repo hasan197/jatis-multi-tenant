@@ -13,10 +13,28 @@ import (
 	
 	"sample-stack-golang/internal/di"
 	userHttp "sample-stack-golang/internal/modules/user/delivery/http"
+	"sample-stack-golang/pkg/logger"
 )
 
 func main() {
 	fmt.Println("Starting application with hot reload...")
+	
+	// Inisialisasi logger
+	logConfig := &logger.Config{
+		LogLevel:      "debug",
+		LogFilePath:   "logs/app.log",
+		MaxSize:       10,
+		MaxBackups:    5,
+		MaxAge:        30,
+		Compress:      true,
+		ConsoleOutput: true,
+	}
+	
+	if err := logger.InitLogger(logConfig); err != nil {
+		log.Fatal("Failed to initialize logger:", err)
+	}
+	fmt.Println("Logger initialized successfully")
+	
 	fmt.Println("Initializing DI container...")
 
 	// Inisialisasi DI container dan lifecycle manager

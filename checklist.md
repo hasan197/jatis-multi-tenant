@@ -29,7 +29,7 @@
 
 ### 4. Backend Base Setup
 - [x] Setup project structure (cmd, internal, pkg)
-- [ ] Setup dependency injection
+- [x] Setup dependency injection
 - [ ] Setup error handling
 - [ ] Setup logging
 - [ ] Setup metrics collection (untuk Prometheus monitoring)
