@@ -41,4 +41,62 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trigger_ensure_messages_partition
     BEFORE INSERT ON messages
     FOR EACH ROW
-    EXECUTE FUNCTION ensure_messages_partition(); 
+    EXECUTE FUNCTION ensure_messages_partition();
+
+-- Fungsi untuk menghapus partisi
+CREATE OR REPLACE FUNCTION drop_messages_partition(tenant_id UUID)
+RETURNS void AS $$
+DECLARE
+    partition_name TEXT;
+BEGIN
+    partition_name := 'messages_' || replace(tenant_id::text, '-', '_');
+    
+    -- Hapus partisi jika ada
+    EXECUTE format('DROP TABLE IF EXISTS %I', partition_name);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Fungsi untuk memeriksa status partisi
+CREATE OR REPLACE FUNCTION check_messages_partition(tenant_id UUID)
+RETURNS boolean AS $$
+DECLARE
+    partition_name TEXT;
+    partition_exists BOOLEAN;
+BEGIN
+    partition_name := 'messages_' || replace(tenant_id::text, '-', '_');
+    
+    SELECT EXISTS (
+        SELECT 1
+        FROM pg_tables
+        WHERE tablename = partition_name
+    ) INTO partition_exists;
+    
+    RETURN partition_exists;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Fungsi untuk maintenance partisi
+CREATE OR REPLACE FUNCTION maintain_messages_partitions()
+RETURNS void AS $$
+DECLARE
+    partition_record RECORD;
+BEGIN
+    -- Reindex semua partisi
+    FOR partition_record IN 
+        SELECT tablename 
+        FROM pg_tables 
+        WHERE tablename LIKE 'messages_%'
+    LOOP
+        EXECUTE format('REINDEX TABLE %I', partition_record.tablename);
+    END LOOP;
+    
+    -- Vacuum analyze semua partisi
+    FOR partition_record IN 
+        SELECT tablename 
+        FROM pg_tables 
+        WHERE tablename LIKE 'messages_%'
+    LOOP
+        EXECUTE format('VACUUM ANALYZE %I', partition_record.tablename);
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql; 

@@ -12,7 +12,11 @@ import (
 )
 
 type messageRepository struct {
-	db *sql.DB
+	db interface {
+		Exec(query string, args ...interface{}) (sql.Result, error)
+		Query(query string, args ...interface{}) (*sql.Rows, error)
+		QueryRow(query string, args ...interface{}) *sql.Row
+	}
 }
 
 // NewMessageRepository membuat instance baru MessageRepository
@@ -24,6 +28,12 @@ func NewMessageRepository(db *sql.DB) model.MessageRepository {
 
 // Create menyimpan pesan baru
 func (r *messageRepository) Create(message *model.Message) error {
+	// Buat partisi terlebih dahulu
+	_, err := r.db.Exec("SELECT create_messages_partition($1)", message.TenantID)
+	if err != nil {
+		return fmt.Errorf("failed to create partition: %v", err)
+	}
+
 	query := `
 		INSERT INTO messages (id, tenant_id, payload, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5)
@@ -37,7 +47,7 @@ func (r *messageRepository) Create(message *model.Message) error {
 	message.CreatedAt = now
 	message.UpdatedAt = now
 
-	err := r.db.QueryRow(
+	err = r.db.QueryRow(
 		query,
 		message.ID,
 		message.TenantID,
@@ -200,6 +210,38 @@ func (r *messageRepository) Delete(tenantID, messageID uuid.UUID) error {
 
 	if rowsAffected == 0 {
 		return fmt.Errorf("message not found")
+	}
+
+	return nil
+}
+
+// WithTransaction menjalankan operasi dalam transaksi
+func (r *messageRepository) WithTransaction(fn func(model.MessageRepository) error) error {
+	db, ok := r.db.(*sql.DB)
+	if !ok {
+		return fmt.Errorf("transaction already started")
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %v", err)
+	}
+
+	// Buat repository baru dengan transaksi
+	txRepo := &messageRepository{db: tx}
+
+	// Jalankan fungsi dengan repository transaksi
+	if err := fn(txRepo); err != nil {
+		// Rollback jika terjadi error
+		if rbErr := tx.Rollback(); rbErr != nil {
+			return fmt.Errorf("tx error: %v, rollback error: %v", err, rbErr)
+		}
+		return err
+	}
+
+	// Commit transaksi
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %v", err)
 	}
 
 	return nil

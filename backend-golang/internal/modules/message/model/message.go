@@ -30,4 +30,5 @@ type MessageRepository interface {
 	FindByTenant(filter MessageFilter) ([]*Message, string, error)
 	Update(message *Message) error
 	Delete(tenantID, messageID uuid.UUID) error
+	WithTransaction(fn func(MessageRepository) error) error
 } 
