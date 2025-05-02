@@ -1,0 +1,42 @@
+groups:
+  - name: backend_alerts
+    rules:
+      # Alert untuk error rate yang tinggi
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is above 5% for the last 5 minutes"
+
+      # Alert untuk response time yang lambat
+      - alert: SlowResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow response time detected"
+          description: "95th percentile of response time is above 1 second"
+
+      # Alert untuk database query yang lambat
+      - alert: SlowDatabaseQueries
+        expr: histogram_quantile(0.95, rate(db_query_duration_seconds_bucket[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow database queries detected"
+          description: "95th percentile of database query time is above 0.5 seconds"
+
+      # Alert untuk jumlah user aktif yang rendah
+      - alert: LowActiveUsers
+        expr: active_users < 10
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low number of active users"
+          description: "Number of active users is below 10 for 15 minutes" 

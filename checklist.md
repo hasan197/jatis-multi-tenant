@@ -31,8 +31,8 @@
 - [x] Setup project structure (cmd, internal, pkg)
 - [x] Setup dependency injection
 - [ ] Setup error handling
-- [ ] Setup logging
-- [ ] Setup metrics collection (untuk Prometheus monitoring)
+- [x] Setup logging
+- [x] Setup metrics collection (untuk Prometheus monitoring)
 - [ ] Setup WebSocket server (Opsional)
 - [ ] Setup testing dengan Go testing + Testify
 

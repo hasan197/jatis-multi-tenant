@@ -12,6 +12,7 @@ import (
 	_ "github.com/lib/pq"
 	
 	"sample-stack-golang/internal/di"
+	"sample-stack-golang/internal/metrics"
 	userHttp "sample-stack-golang/internal/modules/user/delivery/http"
 	"sample-stack-golang/pkg/logger"
 )
@@ -57,6 +58,9 @@ func main() {
 
 	// Inisialisasi router Gin
 	r := gin.Default()
+
+	// Setup metrics
+	metrics.SetupMetrics(r)
 
 	// Konfigurasi CORS
 	r.Use(cors.New(cors.Config{
