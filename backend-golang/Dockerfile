@@ -24,7 +24,7 @@ FROM golang:1.21-alpine AS development
 WORKDIR /app
 
 # Install dependencies
-RUN apk add --no-cache git make
+RUN apk add --no-cache git make postgresql-client
 
 # Copy go mod and sum files
 COPY go.mod go.sum ./

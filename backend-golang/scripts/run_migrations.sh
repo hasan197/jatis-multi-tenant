@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Menjalankan migrasi database
+# Menjalankan migrasi database dari host
 echo "Running database migrations..."
 
-# Koneksi ke PostgreSQL dan menjalankan skrip SQL
-psql -h postgres -U postgres -d sample_db -f /app/scripts/init_db.sql
+# Menjalankan migration di dalam container menggunakan nerdctl
+nerdctl compose exec backend-golang sh -c "cd /app && ./scripts/run_migrations_in_container.sh"
 
 echo "Migrations completed!" 
