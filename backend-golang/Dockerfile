@@ -9,14 +9,14 @@ RUN apk add --no-cache git make
 # Copy go mod and sum files
 COPY go.mod go.sum ./
 
-# Download all dependencies
-RUN go mod download
+# Download all dependencies and vendor them
+RUN go mod download && go mod vendor
 
 # Copy the source code
 COPY . .
 
 # Build the binary
-RUN go build -o /app/backend-golang cmd/serve/main.go
+RUN go build -mod=vendor -o /app/backend-golang cmd/serve/main.go
 
 # Development stage
 FROM golang:1.21-alpine AS development
@@ -24,13 +24,13 @@ FROM golang:1.21-alpine AS development
 WORKDIR /app
 
 # Install dependencies
-RUN apk add --no-cache git make postgresql-client
+RUN apk add --no-cache git make postgresql-client curl
 
 # Copy go mod and sum files
 COPY go.mod go.sum ./
 
-# Download all dependencies
-RUN go mod download
+# Download all dependencies and vendor them
+RUN go mod download && go mod vendor
 
 # Copy the source code
 COPY . .
@@ -39,7 +39,7 @@ COPY . .
 EXPOSE 8080
 
 # Run the application
-CMD ["go", "run", "cmd/serve/main.go"]
+CMD ["go", "run", "-mod=vendor", "cmd/serve/main.go"]
 
 # Production stage
 FROM alpine:latest AS production

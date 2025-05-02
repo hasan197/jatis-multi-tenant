@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	
-	"sample-stack/internal/modules/user/domain"
+	"sample-stack-golang/internal/modules/user/domain"
 )
 
 type UserHandler struct {

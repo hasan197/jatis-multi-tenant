@@ -7,7 +7,8 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./backend-golang:/app
+      - ./backend-golang:/app:delegated
+      - /app/.git
     depends_on:
       - postgres
       - redis
@@ -25,7 +26,7 @@ services:
       - RABBITMQ_PORT=5672
     command: >
       sh -c "if [ \"$$GO_ENV\" = \"development\" ]; then
-        go run cmd/serve/main.go;
+        go run -mod=vendor cmd/serve/main.go;
       else
         /app/backend-golang;
       fi"

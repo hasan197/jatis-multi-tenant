@@ -6,7 +6,7 @@ import (
 	"log"
 	"strings"
 	
-	"sample-stack/internal/modules/user/domain"
+	"sample-stack-golang/internal/modules/user/domain"
 )
 
 type userUseCase struct {

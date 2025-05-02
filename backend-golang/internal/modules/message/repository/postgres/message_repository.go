@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
-	"sample-stack/internal/modules/message/model"
+	"sample-stack-golang/internal/modules/message/model"
 )
 
 type messageRepository struct {

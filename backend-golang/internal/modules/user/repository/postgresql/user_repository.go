@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"sample-stack/internal/modules/user/domain"
+	"sample-stack-golang/internal/modules/user/domain"
 )
 
 type userRepository struct {

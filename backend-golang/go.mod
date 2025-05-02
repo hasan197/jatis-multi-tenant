@@ -1,4 +1,4 @@
-module sample-stack
+module sample-stack-golang
 
 go 1.21
 
