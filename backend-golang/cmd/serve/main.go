@@ -13,7 +13,7 @@ import (
 	_ "github.com/lib/pq"
 	
 	"sample-stack-golang/internal/di"
-	"sample-stack-golang/internal/metrics"
+	"sample-stack-golang/pkg/infrastructure/metrics"
 	userHttp "sample-stack-golang/internal/modules/user/delivery/http"
 	"sample-stack-golang/pkg/config"
 	"sample-stack-golang/pkg/logger"
