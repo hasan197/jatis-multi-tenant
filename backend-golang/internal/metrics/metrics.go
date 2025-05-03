@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -62,7 +63,7 @@ func metricsMiddleware() gin.HandlerFunc {
 		c.Next()
 		
 		status := c.Writer.Status()
-		httpRequestsTotal.WithLabelValues(c.Request.Method, c.FullPath(), string(status)).Inc()
+		httpRequestsTotal.WithLabelValues(c.Request.Method, c.FullPath(), fmt.Sprint(status)).Inc()
 		start.ObserveDuration()
 	}
 }

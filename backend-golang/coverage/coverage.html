@@ -1,0 +1,674 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>config: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">sample-stack-golang/internal/config/config.go (0.0%)</option>
+				
+				<option value="file1">sample-stack-golang/internal/di/config.go (0.0%)</option>
+				
+				<option value="file2">sample-stack-golang/internal/di/container.go (40.0%)</option>
+				
+				<option value="file3">sample-stack-golang/internal/di/lifecycle.go (0.0%)</option>
+				
+				<option value="file4">sample-stack-golang/internal/di/service.go (88.9%)</option>
+				
+				<option value="file5">sample-stack-golang/internal/modules/user/repository/postgresql/user_repository.go (32.8%)</option>
+				
+				<option value="file6">sample-stack-golang/internal/modules/user/usecase/user_usecase.go (39.5%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">no coverage</span>
+				<span class="cov1">low coverage</span>
+				<span class="cov2">*</span>
+				<span class="cov3">*</span>
+				<span class="cov4">*</span>
+				<span class="cov5">*</span>
+				<span class="cov6">*</span>
+				<span class="cov7">*</span>
+				<span class="cov8">*</span>
+				<span class="cov9">*</span>
+				<span class="cov10">high coverage</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package config
+
+// Config menyimpan konfigurasi aplikasi
+type Config struct {
+        DatabaseURL string
+}
+
+// Load memuat konfigurasi dari environment variables
+func Load() (*Config, error) <span class="cov0" title="0">{
+        return &amp;Config{
+                DatabaseURL: "postgres://postgres:postgres@postgres:5432/sample_db?sslmode=disable",
+        }, nil
+}</span> </pre>
+		
+		<pre class="file" id="file1" style="display: none">package di
+
+import (
+        "database/sql"
+        "fmt"
+        "sample-stack-golang/internal/config"
+)
+
+// ConfigContainer adalah interface untuk mengakses konfigurasi
+type ConfigContainer interface {
+        GetConfig() *config.Config
+        GetDB() *sql.DB
+}
+
+type configContainer struct {
+        config *config.Config
+        db     *sql.DB
+}
+
+// NewConfigContainer membuat instance baru dari ConfigContainer
+func NewConfigContainer(cfg *config.Config, db *sql.DB) ConfigContainer <span class="cov0" title="0">{
+        return &amp;configContainer{
+                config: cfg,
+                db:     db,
+        }
+}</span>
+
+// GetConfig mengambil konfigurasi dari container
+func (cc *configContainer) GetConfig() *config.Config <span class="cov0" title="0">{
+        return cc.config
+}</span>
+
+// GetDB mengambil database connection dari container
+func (cc *configContainer) GetDB() *sql.DB <span class="cov0" title="0">{
+        return cc.db
+}</span>
+
+// InitializeConfig menginisialisasi konfigurasi dan dependencies yang diperlukan
+func InitializeConfig() (ConfigContainer, error) <span class="cov0" title="0">{
+        // Load configuration
+        cfg, err := config.Load()
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to load config: %w", err)
+        }</span>
+
+        // Initialize database connection
+        <span class="cov0" title="0">db, err := sql.Open("postgres", cfg.DatabaseURL)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to connect to database: %w", err)
+        }</span>
+
+        // Test database connection
+        <span class="cov0" title="0">if err := db.Ping(); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to ping database: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return NewConfigContainer(cfg, db), nil</span>
+} </pre>
+		
+		<pre class="file" id="file2" style="display: none">package di
+
+import (
+        "sync"
+)
+
+// Container adalah struktur yang menampung semua dependencies
+type Container struct {
+        mu    sync.RWMutex
+        deps  map[string]interface{}
+        close []func() error
+}
+
+// NewContainer membuat instance baru dari Container
+func NewContainer() *Container <span class="cov1" title="1">{
+        return &amp;Container{
+                deps:  make(map[string]interface{}),
+                close: make([]func() error, 0),
+        }
+}</span>
+
+// Register mendaftarkan dependency ke container
+func (c *Container) Register(name string, dep interface{}) <span class="cov10" title="2">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+        c.deps[name] = dep
+}</span>
+
+// Get mengambil dependency dari container
+func (c *Container) Get(name string) (interface{}, bool) <span class="cov1" title="1">{
+        c.mu.RLock()
+        defer c.mu.RUnlock()
+        dep, ok := c.deps[name]
+        return dep, ok
+}</span>
+
+// RegisterCloser mendaftarkan fungsi cleanup untuk dependency
+func (c *Container) RegisterCloser(fn func() error) <span class="cov0" title="0">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+        c.close = append(c.close, fn)
+}</span>
+
+// Close menutup semua dependencies yang terdaftar
+func (c *Container) Close() error <span class="cov0" title="0">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+        
+        var errs []error
+        for _, closeFn := range c.close </span><span class="cov0" title="0">{
+                if err := closeFn(); err != nil </span><span class="cov0" title="0">{
+                        errs = append(errs, err)
+                }</span>
+        }
+        
+        <span class="cov0" title="0">if len(errs) &gt; 0 </span><span class="cov0" title="0">{
+                return errs[0] // Return first error for simplicity
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+} </pre>
+		
+		<pre class="file" id="file3" style="display: none">package di
+
+import (
+        "context"
+        "fmt"
+        "log"
+        "os"
+        "os/signal"
+        "syscall"
+)
+
+// LifecycleManager mengatur lifecycle dari aplikasi
+type LifecycleManager struct {
+        container *Container
+        config    ConfigContainer
+        services  ServiceContainer
+}
+
+// NewLifecycleManager membuat instance baru dari LifecycleManager
+func NewLifecycleManager(container *Container, config ConfigContainer, services ServiceContainer) *LifecycleManager <span class="cov0" title="0">{
+        return &amp;LifecycleManager{
+                container: container,
+                config:    config,
+                services:  services,
+        }
+}</span>
+
+// Start menginisialisasi dan menjalankan aplikasi
+func (lm *LifecycleManager) Start(ctx context.Context) error <span class="cov0" title="0">{
+        // Setup graceful shutdown
+        sigChan := make(chan os.Signal, 1)
+        signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+        // Wait for shutdown signal
+        go func() </span><span class="cov0" title="0">{
+                sig := &lt;-sigChan
+                log.Printf("Received signal: %v", sig)
+                if err := lm.Shutdown(ctx); err != nil </span><span class="cov0" title="0">{
+                        log.Printf("Error during shutdown: %v", err)
+                }</span>
+                <span class="cov0" title="0">os.Exit(0)</span>
+        }()
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// Shutdown melakukan cleanup dan menutup semua resources
+func (lm *LifecycleManager) Shutdown(ctx context.Context) error <span class="cov0" title="0">{
+        // Close database connection
+        if db := lm.config.GetDB(); db != nil </span><span class="cov0" title="0">{
+                if err := db.Close(); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("error closing database: %w", err)
+                }</span>
+        }
+
+        // Close container
+        <span class="cov0" title="0">if err := lm.container.Close(); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("error closing container: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// Initialize menginisialisasi semua dependencies
+func Initialize() (*LifecycleManager, error) <span class="cov0" title="0">{
+        // Initialize configuration
+        configContainer, err := InitializeConfig()
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to initialize config: %w", err)
+        }</span>
+
+        // Create DI container
+        <span class="cov0" title="0">container := NewContainer()
+
+        // Register services
+        RegisterServices(container, configContainer.GetDB(), configContainer.GetConfig())
+
+        // Create service container
+        serviceContainer := NewServiceContainer(container)
+
+        // Create lifecycle manager
+        manager := NewLifecycleManager(container, configContainer, serviceContainer)
+
+        return manager, nil</span>
+}
+
+// Services mengambil ServiceContainer
+func (lm *LifecycleManager) Services() ServiceContainer <span class="cov0" title="0">{
+        return lm.services
+}</span> </pre>
+		
+		<pre class="file" id="file4" style="display: none">package di
+
+import (
+        "database/sql"
+        "sample-stack-golang/internal/config"
+        "sample-stack-golang/internal/modules/user/domain"
+        "sample-stack-golang/internal/modules/user/repository/postgresql"
+        "sample-stack-golang/internal/modules/user/usecase"
+)
+
+// ServiceContainer adalah interface untuk mengakses semua service
+type ServiceContainer interface {
+        GetUserService() domain.UserUseCase
+}
+
+type serviceContainer struct {
+        container *Container
+}
+
+// NewServiceContainer membuat instance baru dari ServiceContainer
+func NewServiceContainer(container *Container) ServiceContainer <span class="cov8" title="1">{
+        return &amp;serviceContainer{
+                container: container,
+        }
+}</span>
+
+// GetUserService mengambil UserService dari container
+func (sc *serviceContainer) GetUserService() domain.UserUseCase <span class="cov8" title="1">{
+        svc, ok := sc.container.Get("user_service")
+        if !ok </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+        <span class="cov8" title="1">return svc.(domain.UserUseCase)</span>
+}
+
+// RegisterServices mendaftarkan semua service ke container
+func RegisterServices(container *Container, db *sql.DB, cfg *config.Config) <span class="cov8" title="1">{
+        // Register repositories
+        userRepo := postgresql.NewUserRepository(db)
+        container.Register("user_repository", userRepo)
+
+        // Register services
+        userService := usecase.NewUserUseCase(userRepo)
+        container.Register("user_service", userService)
+}</span> </pre>
+		
+		<pre class="file" id="file5" style="display: none">package postgresql
+
+import (
+        "database/sql"
+        "errors"
+        "time"
+
+        "sample-stack-golang/internal/modules/user/domain"
+)
+
+type userRepository struct {
+        db *sql.DB
+}
+
+// NewUserRepository membuat instance baru dari UserRepository dengan database PostgreSQL
+func NewUserRepository(db *sql.DB) domain.UserRepository <span class="cov1" title="1">{
+        return &amp;userRepository{
+                db: db,
+        }
+}</span>
+
+// FindAll mengambil semua user dari database
+func (r *userRepository) FindAll() ([]domain.User, error) <span class="cov0" title="0">{
+        query := `SELECT id, name, email, created_at, updated_at FROM users ORDER BY id DESC`
+        rows, err := r.db.Query(query)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">defer rows.Close()
+
+        var users []domain.User
+        for rows.Next() </span><span class="cov0" title="0">{
+                var user domain.User
+                err := rows.Scan(&amp;user.ID, &amp;user.Name, &amp;user.Email, &amp;user.CreatedAt, &amp;user.UpdatedAt)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+                <span class="cov0" title="0">users = append(users, user)</span>
+        }
+
+        <span class="cov0" title="0">return users, nil</span>
+}
+
+// FindByID mengambil user berdasarkan ID
+func (r *userRepository) FindByID(id uint) (domain.User, error) <span class="cov1" title="1">{
+        query := `SELECT id, name, email, created_at, updated_at FROM users WHERE id = $1`
+        row := r.db.QueryRow(query, id)
+
+        var user domain.User
+        err := row.Scan(&amp;user.ID, &amp;user.Name, &amp;user.Email, &amp;user.CreatedAt, &amp;user.UpdatedAt)
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.Is(err, sql.ErrNoRows) </span><span class="cov0" title="0">{
+                        return domain.User{}, errors.New("user not found")
+                }</span>
+                <span class="cov0" title="0">return domain.User{}, err</span>
+        }
+
+        <span class="cov1" title="1">return user, nil</span>
+}
+
+// FindByEmail mengambil user berdasarkan email
+func (r *userRepository) FindByEmail(email string) (domain.User, error) <span class="cov10" title="2">{
+        query := `SELECT id, name, email, created_at, updated_at FROM users WHERE email = $1`
+        row := r.db.QueryRow(query, email)
+
+        var user domain.User
+        err := row.Scan(&amp;user.ID, &amp;user.Name, &amp;user.Email, &amp;user.CreatedAt, &amp;user.UpdatedAt)
+        if err != nil </span><span class="cov10" title="2">{
+                if errors.Is(err, sql.ErrNoRows) </span><span class="cov10" title="2">{
+                        return domain.User{}, errors.New("user not found")
+                }</span>
+                <span class="cov0" title="0">return domain.User{}, err</span>
+        }
+
+        <span class="cov0" title="0">return user, nil</span>
+}
+
+// Create membuat user baru di database
+func (r *userRepository) Create(user domain.User) (domain.User, error) <span class="cov10" title="2">{
+        query := `
+                INSERT INTO users (name, email, password, created_at, updated_at) 
+                VALUES ($1, $2, $3, $4, $5) 
+                RETURNING id, created_at, updated_at
+        `
+        
+        now := time.Now()
+        err := r.db.QueryRow(
+                query, 
+                user.Name, 
+                user.Email, 
+                user.Password, 
+                now, 
+                now,
+        ).Scan(&amp;user.ID, &amp;user.CreatedAt, &amp;user.UpdatedAt)
+        
+        if err != nil </span><span class="cov0" title="0">{
+                return domain.User{}, err
+        }</span>
+
+        <span class="cov10" title="2">return user, nil</span>
+}
+
+// Update memperbarui data user
+func (r *userRepository) Update(user domain.User) (domain.User, error) <span class="cov0" title="0">{
+        query := `
+                UPDATE users 
+                SET name = $1, email = $2, updated_at = $3
+                WHERE id = $4
+                RETURNING id, name, email, created_at, updated_at
+        `
+        
+        now := time.Now()
+        row := r.db.QueryRow(
+                query, 
+                user.Name, 
+                user.Email, 
+                now, 
+                user.ID,
+        )
+        
+        var updatedUser domain.User
+        err := row.Scan(
+                &amp;updatedUser.ID, 
+                &amp;updatedUser.Name, 
+                &amp;updatedUser.Email, 
+                &amp;updatedUser.CreatedAt, 
+                &amp;updatedUser.UpdatedAt,
+        )
+        
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.Is(err, sql.ErrNoRows) </span><span class="cov0" title="0">{
+                        return domain.User{}, errors.New("user not found")
+                }</span>
+                <span class="cov0" title="0">return domain.User{}, err</span>
+        }
+
+        <span class="cov0" title="0">return updatedUser, nil</span>
+}
+
+// Delete menghapus user dari database
+func (r *userRepository) Delete(id uint) error <span class="cov0" title="0">{
+        query := `DELETE FROM users WHERE id = $1`
+        
+        result, err := r.db.Exec(query, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        
+        <span class="cov0" title="0">rowsAffected, err := result.RowsAffected()
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        
+        <span class="cov0" title="0">if rowsAffected == 0 </span><span class="cov0" title="0">{
+                return errors.New("user not found")
+        }</span>
+        
+        <span class="cov0" title="0">return nil</span>
+} </pre>
+		
+		<pre class="file" id="file6" style="display: none">package usecase
+
+import (
+        "errors"
+        "golang.org/x/crypto/bcrypt"
+        "log"
+        "strings"
+        
+        "sample-stack-golang/internal/modules/user/domain"
+)
+
+type userUseCase struct {
+        userRepo domain.UserRepository
+}
+
+// NewUserUseCase membuat instance baru UserUseCase
+func NewUserUseCase(userRepo domain.UserRepository) domain.UserUseCase <span class="cov1" title="1">{
+        return &amp;userUseCase{
+                userRepo: userRepo,
+        }
+}</span>
+
+// GetUsers mendapatkan semua data user
+func (uc *userUseCase) GetUsers() ([]domain.User, error) <span class="cov0" title="0">{
+        return uc.userRepo.FindAll()
+}</span>
+
+// GetUser mendapatkan user berdasarkan ID
+func (uc *userUseCase) GetUser(id uint) (domain.User, error) <span class="cov1" title="1">{
+        return uc.userRepo.FindByID(id)
+}</span>
+
+// CreateUser membuat user baru
+func (uc *userUseCase) CreateUser(user domain.User) (domain.User, error) <span class="cov10" title="2">{
+        // Validasi data
+        if user.Name == "" </span><span class="cov0" title="0">{
+                return domain.User{}, errors.New("name is required")
+        }</span>
+        
+        <span class="cov10" title="2">if user.Email == "" </span><span class="cov0" title="0">{
+                return domain.User{}, errors.New("email is required")
+        }</span>
+        
+        <span class="cov10" title="2">if user.Password == "" </span><span class="cov0" title="0">{
+                return domain.User{}, errors.New("password is required")
+        }</span>
+        
+        // Cek apakah email sudah digunakan
+        <span class="cov10" title="2">existingUser, err := uc.userRepo.FindByEmail(user.Email)
+        if err == nil &amp;&amp; existingUser.ID != 0 </span><span class="cov0" title="0">{
+                // Email sudah terdaftar
+                log.Printf("Email %s sudah terdaftar dengan ID user %d", user.Email, existingUser.ID)
+                return domain.User{}, errors.New("email already exists")
+        }</span> else<span class="cov10" title="2"> if err != nil &amp;&amp; !strings.Contains(err.Error(), "not found") </span><span class="cov0" title="0">{
+                // Error selain "not found"
+                log.Printf("Error saat mencari user dengan email %s: %v", user.Email, err)
+                return domain.User{}, err
+        }</span>
+        
+        // Log untuk debugging
+        <span class="cov10" title="2">log.Printf("Mencoba membuat user baru dengan email: %s", user.Email)
+        
+        // Hash password
+        hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Printf("Error saat hashing password: %v", err)
+                return domain.User{}, err
+        }</span>
+        
+        <span class="cov10" title="2">user.Password = string(hashedPassword)
+        
+        // Simpan user baru
+        newUser, err := uc.userRepo.Create(user)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Printf("Error saat menyimpan user: %v", err)
+                return domain.User{}, err
+        }</span>
+        
+        // Hapus password dari user yang dikembalikan
+        <span class="cov10" title="2">newUser.Password = ""
+        
+        log.Printf("User berhasil dibuat dengan ID: %d", newUser.ID)
+        return newUser, nil</span>
+}
+
+// UpdateUser memperbarui data user
+func (uc *userUseCase) UpdateUser(user domain.User) (domain.User, error) <span class="cov0" title="0">{
+        // Validasi data
+        if user.ID == 0 </span><span class="cov0" title="0">{
+                return domain.User{}, errors.New("user ID is required")
+        }</span>
+        
+        <span class="cov0" title="0">if user.Name == "" </span><span class="cov0" title="0">{
+                return domain.User{}, errors.New("name is required")
+        }</span>
+        
+        <span class="cov0" title="0">if user.Email == "" </span><span class="cov0" title="0">{
+                return domain.User{}, errors.New("email is required")
+        }</span>
+        
+        // Cek apakah user ada
+        <span class="cov0" title="0">_, err := uc.userRepo.FindByID(user.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                return domain.User{}, err
+        }</span>
+        
+        // Cek apakah email sudah digunakan oleh user lain
+        <span class="cov0" title="0">userWithEmail, err := uc.userRepo.FindByEmail(user.Email)
+        if err == nil &amp;&amp; userWithEmail.ID != 0 &amp;&amp; userWithEmail.ID != user.ID </span><span class="cov0" title="0">{
+                return domain.User{}, errors.New("email already exists")
+        }</span>
+        
+        // Update user
+        <span class="cov0" title="0">return uc.userRepo.Update(user)</span>
+}
+
+// DeleteUser menghapus user berdasarkan ID
+func (uc *userUseCase) DeleteUser(id uint) error <span class="cov0" title="0">{
+        return uc.userRepo.Delete(id)
+}</span> </pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

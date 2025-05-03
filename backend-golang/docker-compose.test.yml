@@ -1,0 +1,41 @@
+services:
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    volumes:
+      - ./coverage:/app/coverage
+      - ./scripts:/app/scripts
+      - ./tests:/app/tests
+      - ./internal:/app/internal
+      - ./pkg:/app/pkg
+      - ./api:/app/api
+      - ./cmd:/app/cmd
+      - ./go.mod:/app/go.mod
+      - ./go.sum:/app/go.sum
+    environment:
+      - GO_ENV=test
+      - DB_HOST=test-db
+      - DB_PORT=5432
+      - DB_USER=test
+      - DB_PASSWORD=test
+      - DB_NAME=testdb
+      - GOPATH=/tmp/go
+      - XDG_CACHE_HOME=/tmp/cache
+    command: ["/bin/sh", "-c", "mkdir -p /app/coverage /tmp/go /tmp/cache && cd /app && sh ./scripts/run-test.sh"]
+    depends_on:
+      - test-db
+
+  test-db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=test
+      - POSTGRES_PASSWORD=test
+      - POSTGRES_DB=testdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - test-db-data:/var/lib/postgresql/data
+
+volumes:
+  test-db-data: 

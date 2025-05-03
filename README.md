@@ -39,4 +39,27 @@
 - **Alertmanager:** http://localhost:9093
 
 > **Catatan:**
-> Stack aplikasi dan stack monitoring dipisahkan agar lebih modular dan mudah di-maintain. Jalankan keduanya sesuai kebutuhan. 
+> Stack aplikasi dan stack monitoring dipisahkan agar lebih modular dan mudah di-maintain. Jalankan keduanya sesuai kebutuhan.
+
+---
+
+## Cara Menjalankan Test Backend Golang
+
+1. Build image backend-golang:
+   ```bash
+   nerdctl compose -f backend-golang/docker-compose.test.yml build
+   ```
+
+2. Jalankan test backend-golang:
+   ```bash
+   nerdctl compose -f backend-golang/docker-compose.test.yml up --abort-on-container-exit
+   # atau
+   docker compose -f backend-golang/docker-compose.test.yml up --abort-on-container-exit
+   ```
+
+3. Hasil test akan muncul di terminal. Untuk menghentikan dan membersihkan container test:
+   ```bash
+   nerdctl compose -f backend-golang/docker-compose.test.yml down
+   # atau
+   docker compose -f backend-golang/docker-compose.test.yml down
+   ``` 

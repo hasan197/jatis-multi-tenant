@@ -76,6 +76,9 @@ func (uc *userUseCase) CreateUser(user domain.User) (domain.User, error) {
 		return domain.User{}, err
 	}
 	
+	// Hapus password dari user yang dikembalikan
+	newUser.Password = ""
+	
 	log.Printf("User berhasil dibuat dengan ID: %d", newUser.ID)
 	return newUser, nil
 }
