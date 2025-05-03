@@ -7,8 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	"github.com/go-playground/validator/v10"
 	_ "github.com/lib/pq"
 	
 	"sample-stack-golang/internal/di"
@@ -16,6 +17,15 @@ import (
 	userHttp "sample-stack-golang/internal/modules/user/delivery/http"
 	"sample-stack-golang/pkg/logger"
 )
+
+// CustomValidator adalah custom validator untuk Echo
+type CustomValidator struct {
+	validator *validator.Validate
+}
+
+func (cv *CustomValidator) Validate(i interface{}) error {
+	return cv.validator.Struct(i)
+}
 
 func main() {
 	fmt.Println("Starting application with hot reload...")
@@ -56,32 +66,35 @@ func main() {
 	}
 	fmt.Println("Lifecycle manager started successfully")
 
-	// Inisialisasi router Gin
-	r := gin.Default()
+	// Inisialisasi Echo
+	e := echo.New()
+
+	// Setup validator
+	e.Validator = &CustomValidator{validator: validator.New()}
 
 	// Setup metrics
-	metrics.SetupMetrics(r)
+	metrics.SetupMetrics(e)
 
 	// Konfigurasi CORS
-	r.Use(cors.New(cors.Config{
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins:     []string{"http://localhost:5173"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
-		ExposeHeaders:    []string{"Content-Length"},
+		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
+		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
+		ExposeHeaders:    []string{echo.HeaderContentLength},
 		AllowCredentials: true,
 	}))
 
 	// Health check endpoint
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
+	e.GET("/health", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, map[string]interface{}{
 			"status":    "ok",
 			"message":   "Server is running with hot reload!",
 		})
 	})
 
 	// Endpoint hello-world
-	r.GET("/api/hello-world", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
+	e.GET("/api/hello-world", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, map[string]interface{}{
 			"message":   "Hello World dari Backend Golang!",
 			"timestamp": time.Now().Format(time.RFC3339),
 		})
@@ -100,12 +113,12 @@ func main() {
 	
 	// Register user routes
 	fmt.Println("Registering user routes...")
-	userHttp.RegisterRoutes(r, userHandler)
+	userHttp.RegisterRoutes(e, userHandler)
 	fmt.Println("User routes registered successfully")
 
 	// Jalankan server
 	fmt.Println("Starting server on :8080...")
-	if err := r.Run(":8080"); err != nil {
+	if err := e.Start(":8080"); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
 } 

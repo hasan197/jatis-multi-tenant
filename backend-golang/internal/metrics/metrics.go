@@ -2,7 +2,7 @@ package metrics
 
 import (
 	"fmt"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -47,24 +47,28 @@ var (
 )
 
 // SetupMetrics mengatur endpoint metrics dan middleware
-func SetupMetrics(router *gin.Engine) {
+func SetupMetrics(e *echo.Echo) {
 	// Setup metrics endpoint
-	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	e.GET("/metrics", echo.WrapHandler(promhttp.Handler()))
 
 	// Setup middleware untuk mengumpulkan metrics
-	router.Use(metricsMiddleware())
+	e.Use(metricsMiddleware())
 }
 
 // metricsMiddleware mengumpulkan metrics untuk setiap request HTTP
-func metricsMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		start := prometheus.NewTimer(httpRequestDuration.WithLabelValues(c.Request.Method, c.FullPath()))
-		
-		c.Next()
-		
-		status := c.Writer.Status()
-		httpRequestsTotal.WithLabelValues(c.Request.Method, c.FullPath(), fmt.Sprint(status)).Inc()
-		start.ObserveDuration()
+func metricsMiddleware() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			start := prometheus.NewTimer(httpRequestDuration.WithLabelValues(c.Request().Method, c.Path()))
+			
+			err := next(c)
+			
+			status := c.Response().Status
+			httpRequestsTotal.WithLabelValues(c.Request().Method, c.Path(), fmt.Sprint(status)).Inc()
+			start.ObserveDuration()
+			
+			return err
+		}
 	}
 }
 

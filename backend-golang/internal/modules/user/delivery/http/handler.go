@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 	
 	"sample-stack-golang/internal/modules/user/domain"
@@ -29,18 +29,18 @@ func NewUserHandler(userUseCase domain.UserUseCase) *UserHandler {
 }
 
 // getRequestContext mengambil konteks umum dari request
-func (h *UserHandler) getRequestContext(c *gin.Context) []zap.Field {
+func (h *UserHandler) getRequestContext(c echo.Context) []zap.Field {
 	return []zap.Field{
-		zap.String("request_id", c.GetString("request_id")),
-		zap.String("client_ip", c.ClientIP()),
-		zap.String("user_agent", c.GetHeader("User-Agent")),
-		zap.String("method", c.Request.Method),
-		zap.String("path", c.Request.URL.Path),
+		zap.String("request_id", c.Request().Header.Get("X-Request-ID")),
+		zap.String("client_ip", c.RealIP()),
+		zap.String("user_agent", c.Request().UserAgent()),
+		zap.String("method", c.Request().Method),
+		zap.String("path", c.Request().URL.Path),
 	}
 }
 
 // GetUsers menangani request untuk mendapatkan semua user
-func (h *UserHandler) GetUsers(c *gin.Context) {
+func (h *UserHandler) GetUsers(c echo.Context) error {
 	ctx := h.getRequestContext(c)
 	log := h.logger.With(ctx...)
 	
@@ -52,24 +52,23 @@ func (h *UserHandler) GetUsers(c *gin.Context) {
 			zap.Error(err),
 			zap.String("error_type", "internal_error"),
 		)
-		c.JSON(http.StatusInternalServerError, gin.H{
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
 			"error": err.Error(),
 		})
-		return
 	}
 	
 	log.Info("berhasil mendapatkan users",
 		zap.Int("total_users", len(users)),
-		zap.Duration("duration", time.Since(c.GetTime("start_time"))),
+		zap.Duration("duration", time.Since(time.Now())),
 	)
 	
-	c.JSON(http.StatusOK, gin.H{
+	return c.JSON(http.StatusOK, map[string]interface{}{
 		"data": users,
 	})
 }
 
 // GetUser menangani request untuk mendapatkan satu user berdasarkan ID
-func (h *UserHandler) GetUser(c *gin.Context) {
+func (h *UserHandler) GetUser(c echo.Context) error {
 	idParam := c.Param("id")
 	ctx := h.getRequestContext(c)
 	log := h.logger.With(append(ctx, zap.String("user_id", idParam))...)
@@ -82,10 +81,9 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 			zap.Error(err),
 			zap.String("error_type", "validation_error"),
 		)
-		c.JSON(http.StatusBadRequest, gin.H{
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
 			"error": "Invalid user ID",
 		})
-		return
 	}
 	
 	user, err := h.userUseCase.GetUser(uint(id))
@@ -95,46 +93,54 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 			zap.String("error_type", "not_found"),
 			zap.Uint("user_id", uint(id)),
 		)
-		c.JSON(http.StatusNotFound, gin.H{
+		return c.JSON(http.StatusNotFound, map[string]interface{}{
 			"error": err.Error(),
 		})
-		return
 	}
 	
 	log.Info("berhasil mendapatkan user",
 		zap.Uint("user_id", user.ID),
 		zap.String("email", user.Email),
-		zap.Duration("duration", time.Since(c.GetTime("start_time"))),
+		zap.Duration("duration", time.Since(time.Now())),
 	)
 	
-	c.JSON(http.StatusOK, gin.H{
+	return c.JSON(http.StatusOK, map[string]interface{}{
 		"data": user,
 	})
 }
 
 // CreateUser menangani request untuk membuat user baru
-func (h *UserHandler) CreateUser(c *gin.Context) {
+func (h *UserHandler) CreateUser(c echo.Context) error {
 	ctx := h.getRequestContext(c)
 	log := h.logger.With(ctx...)
 	
 	log.Info("memulai request create user")
 	
 	var userInput struct {
-		Name     string `json:"name" binding:"required"`
-		Email    string `json:"email" binding:"required,email"`
-		Password string `json:"password" binding:"required,min=6"`
+		Name     string `json:"name" validate:"required"`
+		Email    string `json:"email" validate:"required,email"`
+		Password string `json:"password" validate:"required,min=6"`
 	}
 	
-	if err := c.ShouldBindJSON(&userInput); err != nil {
+	if err := c.Bind(&userInput); err != nil {
 		log.Error("gagal parse request body",
 			zap.Error(err),
 			zap.String("error_type", "validation_error"),
-			zap.Any("request_body", c.Request.Body),
 		)
-		c.JSON(http.StatusBadRequest, gin.H{
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
 			"error": err.Error(),
 		})
-		return
+	}
+	
+	// Validasi input
+	if err := c.Validate(&userInput); err != nil {
+		log.Error("validasi input gagal",
+			zap.Error(err),
+			zap.String("error_type", "validation_error"),
+		)
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"error": err.Error(),
+		})
 	}
 	
 	// Log data sensitif dengan level debug
@@ -156,25 +162,24 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 			zap.String("error_type", "creation_error"),
 			zap.String("email", userInput.Email),
 		)
-		c.JSON(http.StatusBadRequest, gin.H{
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
 			"error": err.Error(),
 		})
-		return
 	}
 	
 	log.Info("user berhasil dibuat",
 		zap.Uint("user_id", createdUser.ID),
 		zap.String("email", createdUser.Email),
-		zap.Duration("duration", time.Since(c.GetTime("start_time"))),
+		zap.Duration("duration", time.Since(time.Now())),
 	)
 	
-	c.JSON(http.StatusCreated, gin.H{
+	return c.JSON(http.StatusCreated, map[string]interface{}{
 		"data": createdUser,
 	})
 }
 
 // UpdateUser menangani request untuk memperbarui data user
-func (h *UserHandler) UpdateUser(c *gin.Context) {
+func (h *UserHandler) UpdateUser(c echo.Context) error {
 	idParam := c.Param("id")
 	ctx := h.getRequestContext(c)
 	log := h.logger.With(append(ctx, zap.String("user_id", idParam))...)
@@ -187,34 +192,36 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 			zap.Error(err),
 			zap.String("error_type", "validation_error"),
 		)
-		c.JSON(http.StatusBadRequest, gin.H{
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
 			"error": "Invalid user ID",
 		})
-		return
 	}
 	
 	var userInput struct {
-		Name  string `json:"name" binding:"required"`
-		Email string `json:"email" binding:"required,email"`
+		Name  string `json:"name" validate:"required"`
+		Email string `json:"email" validate:"required,email"`
 	}
 	
-	if err := c.ShouldBindJSON(&userInput); err != nil {
+	if err := c.Bind(&userInput); err != nil {
 		log.Error("gagal parse request body",
 			zap.Error(err),
 			zap.String("error_type", "validation_error"),
-			zap.Any("request_body", c.Request.Body),
 		)
-		c.JSON(http.StatusBadRequest, gin.H{
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
 			"error": err.Error(),
 		})
-		return
 	}
 	
-	// Log data sensitif dengan level debug
-	log.Debug("data update dari request",
-		zap.String("name", userInput.Name),
-		zap.String("email", userInput.Email),
-	)
+	// Validasi input
+	if err := c.Validate(&userInput); err != nil {
+		log.Error("validasi input gagal",
+			zap.Error(err),
+			zap.String("error_type", "validation_error"),
+		)
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
 	
 	user := domain.User{
 		ID:    uint(id),
@@ -229,25 +236,24 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 			zap.String("error_type", "update_error"),
 			zap.Uint("user_id", uint(id)),
 		)
-		c.JSON(http.StatusBadRequest, gin.H{
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
 			"error": err.Error(),
 		})
-		return
 	}
 	
 	log.Info("user berhasil diupdate",
 		zap.Uint("user_id", updatedUser.ID),
 		zap.String("email", updatedUser.Email),
-		zap.Duration("duration", time.Since(c.GetTime("start_time"))),
+		zap.Duration("duration", time.Since(time.Now())),
 	)
 	
-	c.JSON(http.StatusOK, gin.H{
+	return c.JSON(http.StatusOK, map[string]interface{}{
 		"data": updatedUser,
 	})
 }
 
 // DeleteUser menangani request untuk menghapus user
-func (h *UserHandler) DeleteUser(c *gin.Context) {
+func (h *UserHandler) DeleteUser(c echo.Context) error {
 	idParam := c.Param("id")
 	ctx := h.getRequestContext(c)
 	log := h.logger.With(append(ctx, zap.String("user_id", idParam))...)
@@ -260,31 +266,26 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 			zap.Error(err),
 			zap.String("error_type", "validation_error"),
 		)
-		c.JSON(http.StatusBadRequest, gin.H{
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
 			"error": "Invalid user ID",
 		})
-		return
 	}
 	
-	err = h.userUseCase.DeleteUser(uint(id))
-	if err != nil {
-		log.Error("gagal menghapus user",
+	if err := h.userUseCase.DeleteUser(uint(id)); err != nil {
+		log.Error("gagal delete user",
 			zap.Error(err),
-			zap.String("error_type", "deletion_error"),
+			zap.String("error_type", "delete_error"),
 			zap.Uint("user_id", uint(id)),
 		)
-		c.JSON(http.StatusNotFound, gin.H{
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
 			"error": err.Error(),
 		})
-		return
 	}
 	
 	log.Info("user berhasil dihapus",
 		zap.Uint("user_id", uint(id)),
-		zap.Duration("duration", time.Since(c.GetTime("start_time"))),
+		zap.Duration("duration", time.Since(time.Now())),
 	)
 	
-	c.JSON(http.StatusOK, gin.H{
-		"message": "User successfully deleted",
-	})
+	return c.NoContent(http.StatusNoContent)
 } 

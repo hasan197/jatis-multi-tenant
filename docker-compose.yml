@@ -26,6 +26,7 @@ services:
       - RABBITMQ_PORT=5672
     command: >
       sh -c "if [ \"$$GO_ENV\" = \"development\" ]; then
+        go mod tidy && 
         go mod vendor || true && 
         GOFLAGS=\"-mod=mod\" go run cmd/serve/main.go;
       else

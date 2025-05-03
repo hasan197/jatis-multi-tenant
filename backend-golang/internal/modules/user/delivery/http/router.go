@@ -1,17 +1,18 @@
 package http
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 )
 
-// RegisterRoutes mendaftarkan semua endpoint untuk user
-func RegisterRoutes(router *gin.Engine, handler *UserHandler) {
-	userRoutes := router.Group("/api/users")
-	{
-		userRoutes.GET("", handler.GetUsers)
-		userRoutes.GET("/:id", handler.GetUser)
-		userRoutes.POST("", handler.CreateUser)
-		userRoutes.PUT("/:id", handler.UpdateUser)
-		userRoutes.DELETE("/:id", handler.DeleteUser)
-	}
+// RegisterRoutes mendaftarkan semua route untuk user
+func RegisterRoutes(e *echo.Echo, h *UserHandler) {
+	// Group routes untuk user
+	users := e.Group("/api/users")
+	
+	// Register semua endpoint
+	users.GET("", h.GetUsers)
+	users.GET("/:id", h.GetUser)
+	users.POST("", h.CreateUser)
+	users.PUT("/:id", h.UpdateUser)
+	users.DELETE("/:id", h.DeleteUser)
 } 
