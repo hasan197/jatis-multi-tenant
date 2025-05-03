@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"sample-stack-golang/pkg/logger"
-	"go.uber.org/zap"
 )
 
 // LoggingMiddleware adalah middleware untuk logging HTTP request
@@ -20,14 +19,14 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(rw, r)
 
 		// Log request
-		logger.Log.Info("http request",
-			zap.String("method", r.Method),
-			zap.String("path", r.URL.Path),
-			zap.String("remote_addr", r.RemoteAddr),
-			zap.Int("status", rw.statusCode),
-			zap.Duration("duration", time.Since(start)),
-			zap.String("user_agent", r.UserAgent()),
-		)
+		logger.Log.WithFields(map[string]interface{}{
+			"method":      r.Method,
+			"path":        r.URL.Path,
+			"remote_addr": r.RemoteAddr,
+			"status":      rw.statusCode,
+			"duration":    time.Since(start),
+			"user_agent":  r.UserAgent(),
+		}).Info("http request")
 	})
 }
 
