@@ -15,6 +15,7 @@ import (
 	"sample-stack-golang/internal/di"
 	"sample-stack-golang/internal/metrics"
 	userHttp "sample-stack-golang/internal/modules/user/delivery/http"
+	"sample-stack-golang/pkg/config"
 	"sample-stack-golang/pkg/logger"
 )
 
@@ -30,18 +31,15 @@ func (cv *CustomValidator) Validate(i interface{}) error {
 func main() {
 	fmt.Println("Starting application with hot reload...")
 	
-	// Inisialisasi logger
-	logConfig := &logger.Config{
-		LogLevel:      "debug",
-		LogFilePath:   "logs/app.log",
-		MaxSize:       10,
-		MaxBackups:    5,
-		MaxAge:        30,
-		Compress:      true,
-		ConsoleOutput: true,
+	// Load konfigurasi
+	cfg, err := config.LoadConfig("")
+	if err != nil {
+		log.Fatal("Failed to load config:", err)
 	}
+	fmt.Println("Configuration loaded successfully")
 	
-	if err := logger.InitLogger(logConfig); err != nil {
+	// Inisialisasi logger
+	if err := logger.InitLogger(); err != nil {
 		log.Fatal("Failed to initialize logger:", err)
 	}
 	fmt.Println("Logger initialized successfully")
@@ -89,6 +87,8 @@ func main() {
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"status":    "ok",
 			"message":   "Server is running with hot reload!",
+			"version":   cfg.App.Version,
+			"env":       cfg.App.Env,
 		})
 	})
 
@@ -97,6 +97,7 @@ func main() {
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"message":   "Hello World dari Backend Golang!",
 			"timestamp": time.Now().Format(time.RFC3339),
+			"version":   cfg.App.Version,
 		})
 	})
 	
@@ -117,8 +118,9 @@ func main() {
 	fmt.Println("User routes registered successfully")
 
 	// Jalankan server
-	fmt.Println("Starting server on :8080...")
-	if err := e.Start(":8080"); err != nil {
+	serverAddr := fmt.Sprintf(":%d", cfg.Server.Port)
+	fmt.Printf("Starting server on %s...\n", serverAddr)
+	if err := e.Start(serverAddr); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
 } 
