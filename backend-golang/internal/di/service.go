@@ -1,7 +1,7 @@
 package di
 
 import (
-	"database/sql"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"sample-stack-golang/internal/config"
 	"sample-stack-golang/internal/modules/user/domain"
 	"sample-stack-golang/internal/modules/user/repository/postgresql"
@@ -34,9 +34,9 @@ func (sc *serviceContainer) GetUserService() domain.UserUseCase {
 }
 
 // RegisterServices mendaftarkan semua service ke container
-func RegisterServices(container *Container, db *sql.DB, cfg *config.Config) {
+func RegisterServices(container *Container, pool *pgxpool.Pool, cfg *config.Config) {
 	// Register repositories
-	userRepo := postgresql.NewUserRepository(db)
+	userRepo := postgresql.NewUserRepository(pool)
 	container.Register("user_repository", userRepo)
 
 	// Register services

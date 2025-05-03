@@ -43,7 +43,6 @@ ENV GO111MODULE=on
 
 # Run the application with hot reload
 CMD if [ "$GO_ENV" = "development" ]; then \
-        go mod vendor || true && \
         GOFLAGS="-mod=mod" go run cmd/serve/main.go; \
     else \
         /app/backend-golang; \

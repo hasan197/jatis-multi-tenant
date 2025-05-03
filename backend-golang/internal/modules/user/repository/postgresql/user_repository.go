@@ -1,28 +1,30 @@
 package postgresql
 
 import (
-	"database/sql"
+	"context"
 	"errors"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"sample-stack-golang/internal/modules/user/domain"
 )
 
 type userRepository struct {
-	db *sql.DB
+	pool *pgxpool.Pool
 }
 
 // NewUserRepository membuat instance baru dari UserRepository dengan database PostgreSQL
-func NewUserRepository(db *sql.DB) domain.UserRepository {
+func NewUserRepository(pool *pgxpool.Pool) domain.UserRepository {
 	return &userRepository{
-		db: db,
+		pool: pool,
 	}
 }
 
 // FindAll mengambil semua user dari database
 func (r *userRepository) FindAll() ([]domain.User, error) {
 	query := `SELECT id, name, email, created_at, updated_at FROM users ORDER BY id DESC`
-	rows, err := r.db.Query(query)
+	rows, err := r.pool.Query(context.Background(), query)
 	if err != nil {
 		return nil, err
 	}
@@ -44,12 +46,12 @@ func (r *userRepository) FindAll() ([]domain.User, error) {
 // FindByID mengambil user berdasarkan ID
 func (r *userRepository) FindByID(id uint) (domain.User, error) {
 	query := `SELECT id, name, email, created_at, updated_at FROM users WHERE id = $1`
-	row := r.db.QueryRow(query, id)
+	row := r.pool.QueryRow(context.Background(), query, id)
 
 	var user domain.User
 	err := row.Scan(&user.ID, &user.Name, &user.Email, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.User{}, errors.New("user not found")
 		}
 		return domain.User{}, err
@@ -61,12 +63,12 @@ func (r *userRepository) FindByID(id uint) (domain.User, error) {
 // FindByEmail mengambil user berdasarkan email
 func (r *userRepository) FindByEmail(email string) (domain.User, error) {
 	query := `SELECT id, name, email, created_at, updated_at FROM users WHERE email = $1`
-	row := r.db.QueryRow(query, email)
+	row := r.pool.QueryRow(context.Background(), query, email)
 
 	var user domain.User
 	err := row.Scan(&user.ID, &user.Name, &user.Email, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.User{}, errors.New("user not found")
 		}
 		return domain.User{}, err
@@ -84,7 +86,8 @@ func (r *userRepository) Create(user domain.User) (domain.User, error) {
 	`
 	
 	now := time.Now()
-	err := r.db.QueryRow(
+	err := r.pool.QueryRow(
+		context.Background(),
 		query, 
 		user.Name, 
 		user.Email, 
@@ -110,7 +113,8 @@ func (r *userRepository) Update(user domain.User) (domain.User, error) {
 	`
 	
 	now := time.Now()
-	row := r.db.QueryRow(
+	row := r.pool.QueryRow(
+		context.Background(),
 		query, 
 		user.Name, 
 		user.Email, 
@@ -128,7 +132,7 @@ func (r *userRepository) Update(user domain.User) (domain.User, error) {
 	)
 	
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.User{}, errors.New("user not found")
 		}
 		return domain.User{}, err
@@ -141,17 +145,12 @@ func (r *userRepository) Update(user domain.User) (domain.User, error) {
 func (r *userRepository) Delete(id uint) error {
 	query := `DELETE FROM users WHERE id = $1`
 	
-	result, err := r.db.Exec(query, id)
+	result, err := r.pool.Exec(context.Background(), query, id)
 	if err != nil {
 		return err
 	}
 	
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	
-	if rowsAffected == 0 {
+	if result.RowsAffected() == 0 {
 		return errors.New("user not found")
 	}
 	

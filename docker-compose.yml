@@ -7,7 +7,10 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./backend-golang:/app:delegated
+      - ./backend-golang/cmd:/app/cmd:delegated
+      - ./backend-golang/internal:/app/internal:delegated
+      - ./backend-golang/pkg:/app/pkg:delegated
+      - ./backend-golang/api:/app/api:delegated
       - /app/.git
     depends_on:
       - postgres
@@ -26,9 +29,7 @@ services:
       - RABBITMQ_PORT=5672
     command: >
       sh -c "if [ \"$$GO_ENV\" = \"development\" ]; then
-        go mod tidy && 
-        go mod vendor || true && 
-        GOFLAGS=\"-mod=mod\" go run cmd/serve/main.go;
+        go run -v cmd/serve/main.go;
       else
         /app/backend-golang;
       fi"

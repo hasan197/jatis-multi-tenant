@@ -48,9 +48,7 @@ func (lm *LifecycleManager) Start(ctx context.Context) error {
 func (lm *LifecycleManager) Shutdown(ctx context.Context) error {
 	// Close database connection
 	if db := lm.config.GetDB(); db != nil {
-		if err := db.Close(); err != nil {
-			return fmt.Errorf("error closing database: %w", err)
-		}
+		db.Close()
 	}
 
 	// Close container

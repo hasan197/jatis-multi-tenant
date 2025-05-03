@@ -1,27 +1,30 @@
 package di
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 	"sample-stack-golang/internal/config"
 )
 
 // ConfigContainer adalah interface untuk mengakses konfigurasi
 type ConfigContainer interface {
 	GetConfig() *config.Config
-	GetDB() *sql.DB
+	GetDB() *pgxpool.Pool
 }
 
 type configContainer struct {
 	config *config.Config
-	db     *sql.DB
+	pool   *pgxpool.Pool
 }
 
 // NewConfigContainer membuat instance baru dari ConfigContainer
-func NewConfigContainer(cfg *config.Config, db *sql.DB) ConfigContainer {
+func NewConfigContainer(cfg *config.Config, pool *pgxpool.Pool) ConfigContainer {
 	return &configContainer{
 		config: cfg,
-		db:     db,
+		pool:   pool,
 	}
 }
 
@@ -31,8 +34,8 @@ func (cc *configContainer) GetConfig() *config.Config {
 }
 
 // GetDB mengambil database connection dari container
-func (cc *configContainer) GetDB() *sql.DB {
-	return cc.db
+func (cc *configContainer) GetDB() *pgxpool.Pool {
+	return cc.pool
 }
 
 // InitializeConfig menginisialisasi konfigurasi dan dependencies yang diperlukan
@@ -44,15 +47,18 @@ func InitializeConfig() (ConfigContainer, error) {
 	}
 
 	// Initialize database connection
-	db, err := sql.Open("postgres", cfg.DatabaseURL)
+	pool, err := pgxpool.New(context.Background(), cfg.DatabaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
 	// Test database connection
-	if err := db.Ping(); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	
+	if err := pool.Ping(ctx); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	return NewConfigContainer(cfg, db), nil
+	return NewConfigContainer(cfg, pool), nil
 } 
