@@ -33,7 +33,11 @@ export interface UpdateUserPayload {
 export const getUsers = async (): Promise<User[]> => {
   try {
     const response = await api.get('/users');
-    return response.data.data;
+    // Pastikan response.data.data ada dan valid
+    if (response.data && response.data.data) {
+      return Array.isArray(response.data.data) ? response.data.data : [];
+    }
+    return [];
   } catch (error) {
     console.error('Error fetching users:', error);
     throw error;
