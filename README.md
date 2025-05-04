@@ -62,4 +62,61 @@
    nerdctl compose -f backend-golang/docker-compose.test.yml down
    # atau
    docker compose -f backend-golang/docker-compose.test.yml down
-   ``` 
+   ```
+
+## Cara Update Dependencies Go
+
+Untuk memperbarui dependencies Go tanpa perlu menginstall Go di komputer lokal, gunakan perintah berikut:
+
+```bash
+nerdctl run --rm -v $(pwd)/backend-golang:/app -w /app golang:1.21-alpine sh -c "apk add --no-cache git && go mod tidy"
+```
+
+## Cara Menjalankan Perintah di Container Menggunakan nerdctl
+
+### Menjalankan Query SQL
+
+Untuk menjalankan query SQL di database PostgreSQL:
+
+```bash
+# Menjalankan query SQL langsung
+nerdctl exec -it postgres psql -U postgres -d postgres -c "SELECT * FROM users;"
+
+# Menjalankan file SQL
+nerdctl exec -i postgres psql -U postgres -d postgres < path/to/query.sql
+```
+
+### Menjalankan Perintah Go
+
+Untuk menjalankan perintah Go di container:
+
+```bash
+# Menjalankan go mod tidy
+nerdctl exec -it backend-golang go mod tidy
+
+# Menjalankan go test
+nerdctl exec -it backend-golang go test ./...
+
+# Menjalankan go build
+nerdctl exec -it backend-golang go build
+```
+
+### Menjalankan Perintah di Container Lainnya
+
+```bash
+# Menjalankan perintah di container Redis
+nerdctl exec -it redis redis-cli
+
+# Menjalankan perintah di container Prometheus
+nerdctl exec -it prometheus promtool check config /etc/prometheus/prometheus.yml
+
+# Menjalankan perintah di container Grafana
+nerdctl exec -it grafana grafana-cli plugins list
+```
+
+> **Catatan:**
+> - Ganti `backend-golang`, `postgres`, `redis`, dll dengan nama container yang sesuai
+> - Gunakan flag `-it` jika perintah membutuhkan interaksi
+> - Gunakan flag `-i` jika perintah hanya membutuhkan input
+> - Gunakan flag `-v` untuk mount volume jika diperlukan
+

@@ -3,20 +3,20 @@ package http
 import (
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"sample-stack-golang/internal/modules/tenant/domain"
-	"sample-stack-golang/internal/modules/tenant/usecase"
 )
 
 // TenantHandler handles HTTP requests for tenant
 type TenantHandler struct {
-	tenantUsecase *usecase.TenantUsecase
+	tenantRepo domain.TenantRepository
 }
 
 // NewTenantHandler creates a new tenant handler
-func NewTenantHandler(tenantUsecase *usecase.TenantUsecase) *TenantHandler {
+func NewTenantHandler(tenantRepo domain.TenantRepository) *TenantHandler {
 	return &TenantHandler{
-		tenantUsecase: tenantUsecase,
+		tenantRepo: tenantRepo,
 	}
 }
 
@@ -27,7 +27,10 @@ func (h *TenantHandler) Create(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	if err := h.tenantUsecase.Create(c.Request().Context(), &tenant); err != nil {
+	// Generate UUID for new tenant
+	tenant.ID = uuid.New().String()
+
+	if err := h.tenantRepo.Create(c.Request().Context(), &tenant); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
@@ -37,7 +40,7 @@ func (h *TenantHandler) Create(c echo.Context) error {
 // GetByID handles getting a tenant by ID
 func (h *TenantHandler) GetByID(c echo.Context) error {
 	id := c.Param("id")
-	tenant, err := h.tenantUsecase.GetByID(c.Request().Context(), id)
+	tenant, err := h.tenantRepo.GetByID(c.Request().Context(), id)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 	}
@@ -54,7 +57,7 @@ func (h *TenantHandler) Update(c echo.Context) error {
 	}
 
 	tenant.ID = id
-	if err := h.tenantUsecase.Update(c.Request().Context(), &tenant); err != nil {
+	if err := h.tenantRepo.Update(c.Request().Context(), &tenant); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
@@ -64,7 +67,7 @@ func (h *TenantHandler) Update(c echo.Context) error {
 // Delete handles tenant deletion
 func (h *TenantHandler) Delete(c echo.Context) error {
 	id := c.Param("id")
-	if err := h.tenantUsecase.Delete(c.Request().Context(), id); err != nil {
+	if err := h.tenantRepo.Delete(c.Request().Context(), id); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
@@ -73,7 +76,7 @@ func (h *TenantHandler) Delete(c echo.Context) error {
 
 // List handles listing all tenants
 func (h *TenantHandler) List(c echo.Context) error {
-	tenants, err := h.tenantUsecase.List(c.Request().Context())
+	tenants, err := h.tenantRepo.List(c.Request().Context())
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}

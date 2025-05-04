@@ -2,21 +2,20 @@ package postgresql
 
 import (
 	"context"
-	"database/sql"
-	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"sample-stack-golang/internal/modules/tenant/domain"
 )
 
 // TenantRepository implements domain.TenantRepository
 type TenantRepository struct {
-	db *sql.DB
+	pool *pgxpool.Pool
 }
 
 // NewTenantRepository creates a new tenant repository
-func NewTenantRepository(db *sql.DB) *TenantRepository {
+func NewTenantRepository(pool *pgxpool.Pool) *TenantRepository {
 	return &TenantRepository{
-		db: db,
+		pool: pool,
 	}
 }
 
@@ -26,7 +25,7 @@ func (r *TenantRepository) Create(ctx context.Context, tenant *domain.Tenant) er
 		INSERT INTO tenants (id, name, status, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5)
 	`
-	_, err := r.db.ExecContext(ctx, query,
+	_, err := r.pool.Exec(ctx, query,
 		tenant.ID,
 		tenant.Name,
 		tenant.Status,
@@ -44,16 +43,13 @@ func (r *TenantRepository) GetByID(ctx context.Context, id string) (*domain.Tena
 		WHERE id = $1
 	`
 	tenant := &domain.Tenant{}
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
+	err := r.pool.QueryRow(ctx, query, id).Scan(
 		&tenant.ID,
 		&tenant.Name,
 		&tenant.Status,
 		&tenant.CreatedAt,
 		&tenant.UpdatedAt,
 	)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +63,7 @@ func (r *TenantRepository) Update(ctx context.Context, tenant *domain.Tenant) er
 		SET name = $1, status = $2, updated_at = $3
 		WHERE id = $4
 	`
-	_, err := r.db.ExecContext(ctx, query,
+	_, err := r.pool.Exec(ctx, query,
 		tenant.Name,
 		tenant.Status,
 		tenant.UpdatedAt,
@@ -79,7 +75,7 @@ func (r *TenantRepository) Update(ctx context.Context, tenant *domain.Tenant) er
 // Delete deletes a tenant
 func (r *TenantRepository) Delete(ctx context.Context, id string) error {
 	query := `DELETE FROM tenants WHERE id = $1`
-	_, err := r.db.ExecContext(ctx, query, id)
+	_, err := r.pool.Exec(ctx, query, id)
 	return err
 }
 
@@ -90,7 +86,7 @@ func (r *TenantRepository) List(ctx context.Context) ([]*domain.Tenant, error) {
 		FROM tenants
 		ORDER BY created_at DESC
 	`
-	rows, err := r.db.QueryContext(ctx, query)
+	rows, err := r.pool.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}

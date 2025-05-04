@@ -4,7 +4,10 @@ FROM golang:1.21-alpine AS builder
 WORKDIR /app
 
 # Install build dependencies
-RUN apk add --no-cache git make
+RUN apk add --no-cache git make gcc libc-dev
+
+# Install golang-migrate
+RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
 # Copy go mod and sum files
 COPY go.mod go.sum ./

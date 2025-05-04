@@ -15,6 +15,7 @@ import (
 	"sample-stack-golang/internal/di"
 	"sample-stack-golang/pkg/infrastructure/metrics"
 	userHttp "sample-stack-golang/internal/modules/user/delivery/http"
+	tenantHttp "sample-stack-golang/internal/modules/tenant/delivery/http"
 	"sample-stack-golang/pkg/config"
 	"sample-stack-golang/pkg/logger"
 )
@@ -116,6 +117,22 @@ func main() {
 	fmt.Println("Registering user routes...")
 	userHttp.RegisterRoutes(e, userHandler)
 	fmt.Println("User routes registered successfully")
+
+	// Setup tenant handler
+	fmt.Println("Setting up tenant handler...")
+	tenantService := manager.Services().GetTenantService()
+	if tenantService == nil {
+		log.Fatal("Failed to get tenant service from DI container")
+	}
+	fmt.Println("Tenant service retrieved successfully")
+
+	tenantHandler := tenantHttp.NewTenantHandler(tenantService)
+	fmt.Println("Tenant handler created successfully")
+
+	// Register tenant routes
+	fmt.Println("Registering tenant routes...")
+	tenantHttp.RegisterRoutes(e, tenantHandler)
+	fmt.Println("Tenant routes registered successfully")
 
 	// Jalankan server
 	serverAddr := fmt.Sprintf(":%d", cfg.Server.Port)
