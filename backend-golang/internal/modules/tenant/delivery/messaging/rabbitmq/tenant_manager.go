@@ -89,6 +89,7 @@ func (m *TenantManager) StartConsumer(ctx context.Context, tenantID string) erro
 		TenantID:      tenantID,
 		QueueName:     queueName,
 		ConsumerTag:   fmt.Sprintf("consumer.%s", tenantID),
+		Channel:       ch,
 		StopChannel:   make(chan struct{}),
 		IsActive:      true,
 		LastHeartbeat: time.Now(),
@@ -138,8 +139,8 @@ func (m *TenantManager) stopConsumer(ctx context.Context, tenantID string) error
 	close(consumer.StopChannel)
 
 	// Close channel
-	if ch, ok := consumer.Channel.(*amqp.Channel); ok {
-		if err := ch.Close(); err != nil {
+	if consumer.Channel != nil {
+		if err := consumer.Channel.Close(); err != nil {
 			return fmt.Errorf("failed to close channel: %v", err)
 		}
 	}

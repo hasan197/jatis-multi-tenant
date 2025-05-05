@@ -99,4 +99,10 @@ func (u *TenantUseCase) StopConsumer(ctx context.Context, tenantID string) error
 func (u *TenantUseCase) GetConsumers(ctx context.Context) ([]*domain.TenantConsumer, error) {
 	consumers := u.manager.GetAllConsumers()
 	return consumers, nil
+}
+
+// StopConsumer stops the consumer
+func StopConsumer(consumer *domain.TenantConsumer) error {
+	close(consumer.StopChannel)
+	return nil
 } 
