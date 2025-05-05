@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"sample-stack-golang/internal/modules/tenant/domain"
+	"sample-stack-golang/pkg/logger"
 )
 
 var (
@@ -64,9 +65,47 @@ func (u *TenantUseCase) Update(ctx context.Context, tenant *domain.Tenant) error
 
 // Delete deletes a tenant
 func (u *TenantUseCase) Delete(ctx context.Context, id string) error {
+	// Check if tenant exists before proceeding
+	tenant, err := u.repo.GetByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to get tenant: %v", err)
+	}
+	if tenant == nil {
+		return ErrTenantNotFound
+	}
+
+	// First, try to stop and remove the consumer
+	logger.Log.WithField("tenant_id", id).Info("Attempting to stop consumer before deleting tenant")
+	
+	// Call DebugRabbitMQState to get detailed information about the RabbitMQ state
+	if u.manager != nil {
+		u.manager.DebugRabbitMQState(ctx, id)
+	}
+	
+	// Try to stop the consumer
+	if u.manager != nil {
+		err := u.manager.StopConsumer(ctx, id)
+		if err != nil {
+			logger.Log.WithFields(map[string]interface{}{
+				"tenant_id": id,
+				"error":     err,
+			}).Warn("Failed to stop consumer, continuing with tenant deletion")
+			// Don't return error here, continue with deletion
+		} else {
+			logger.Log.WithField("tenant_id", id).Info("Successfully stopped consumer")
+		}
+	}
+
+	// Delete tenant from repository (this will also drop the message partition)
 	if err := u.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("failed to delete tenant: %v", err)
 	}
+
+	// Final check to ensure consumer is removed
+	if u.manager != nil {
+		u.manager.DebugRabbitMQState(ctx, id)
+	}
+
 	return nil
 }
 

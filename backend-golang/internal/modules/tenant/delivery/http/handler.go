@@ -6,6 +6,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"sample-stack-golang/internal/modules/tenant/domain"
+	"sample-stack-golang/pkg/logger"
 )
 
 // TenantHandler handles HTTP requests for tenants
@@ -111,16 +112,36 @@ func (h *TenantHandler) CreateTenant(c echo.Context) error {
 // DeleteTenant handles tenant deletion with consumer cleanup
 func (h *TenantHandler) DeleteTenant(c echo.Context) error {
 	id := c.Param("id")
+	ctx := c.Request().Context()
 
-	// Stop consumer first
-	if err := h.tenantUseCase.StopConsumer(c.Request().Context(), id); err != nil {
+	// Get tenant details for logging
+	tenant, err := h.tenantUseCase.GetByID(ctx, id)
+	if err != nil {
+		if err.Error() == "tenant not found" {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "Tenant not found"})
+		}
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	// Delete tenant
-	if err := h.tenantUseCase.Delete(c.Request().Context(), id); err != nil {
+	// Step 1: Stop consumer first
+	if err := h.tenantUseCase.StopConsumer(ctx, id); err != nil {
+		// Log the error but continue with deletion
+		logger.Log.WithFields(map[string]interface{}{
+			"tenant_id": id,
+			"error":     err.Error(),
+		}).Warn("Failed to stop consumer, proceeding with tenant deletion")
+	}
+
+	// Step 2: Delete tenant (this will also drop the message partition)
+	if err := h.tenantUseCase.Delete(ctx, id); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
+
+	// Log successful deletion
+	logger.Log.WithFields(map[string]interface{}{
+		"tenant_id":   id,
+		"tenant_name": tenant.Name,
+	}).Info("Tenant successfully deleted with all resources cleaned up")
 
 	return c.NoContent(http.StatusNoContent)
 }

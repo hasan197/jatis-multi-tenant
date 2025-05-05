@@ -122,15 +122,34 @@ func (r *TenantRepository) Update(ctx context.Context, tenant *domain.Tenant) er
 
 // Delete deletes a tenant
 func (r *TenantRepository) Delete(ctx context.Context, id string) error {
-	query := `DELETE FROM tenants WHERE id = $1`
+	// Start transaction
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
 
-	result, err := r.db.Exec(ctx, query, id)
+	// Drop the partition for this tenant
+	_, err = tx.Exec(ctx, "SELECT drop_messages_partition($1)", id)
+	if err != nil {
+		return fmt.Errorf("failed to drop messages partition: %w", err)
+	}
+
+	// Delete the tenant
+	query := `DELETE FROM tenants WHERE id = $1`
+	fmt.Errorf(`DELETE FROM tenants WHERE id = $1`)
+	result, err := tx.Exec(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete tenant: %w", err)
 	}
 
 	if result.RowsAffected() == 0 {
 		return pgx.ErrNoRows
+	}
+
+	// Commit transaction
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil

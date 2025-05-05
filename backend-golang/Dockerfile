@@ -13,7 +13,11 @@ RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate
 COPY go.mod go.sum ./
 
 # Download all dependencies
-RUN go mod download
+# Mount go mod cache to preserve downloaded modules
+# RUN --mount=type=cache,target=/go/pkg/mod go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/go/cache \
+    go mod download
 
 # Copy the source code
 COPY . .
@@ -33,7 +37,8 @@ RUN apk add --no-cache git make postgresql-client curl
 COPY go.mod go.sum ./
 
 # Download all dependencies
-RUN go mod download
+# Mount go mod cache to preserve downloaded modules
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
 
 # Copy the source code
 COPY . .
@@ -43,13 +48,20 @@ EXPOSE 8080
 
 # Set environment variables
 ENV GO111MODULE=on
+ENV GOFLAGS="-mod=mod"
+
+# Menentukan direktori bin untuk go install
+ENV GOBIN=/go/bin
+
+# Menggunakan volume untuk cache dan binari
+VOLUME ["/go/pkg/mod", "/go/cache", "/go/bin"]
 
 # Run the application with hot reload
-CMD if [ "$GO_ENV" = "development" ]; then \
-        GOFLAGS="-mod=mod" go run cmd/serve/main.go; \
+CMD /bin/sh -c 'if [ "$GO_ENV" = "development" ]; then \
+        go install cmd/serve/main.go && /go/bin/main; \
     else \
         /app/backend-golang; \
-    fi
+    fi'
 
 # Production stage
 FROM alpine:latest AS production

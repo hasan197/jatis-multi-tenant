@@ -3,12 +3,12 @@ package rabbitmq
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	"github.com/streadway/amqp"
 	"sample-stack-golang/internal/modules/tenant/domain"
+	"sample-stack-golang/pkg/logger"
 )
 
 // TenantManager mengimplementasikan domain.TenantManager untuk RabbitMQ
@@ -46,7 +46,10 @@ func (m *TenantManager) Stop(ctx context.Context) error {
 
 	for id := range m.consumers {
 		if err := m.stopConsumer(ctx, id); err != nil {
-			log.Printf("Error stopping consumer %s: %v", id, err)
+			logger.Log.WithFields(map[string]interface{}{
+				"tenant_id": id,
+				"error": err,
+			}).Error("Error stopping consumer")
 		}
 	}
 
@@ -59,9 +62,9 @@ func (m *TenantManager) StartConsumer(ctx context.Context, tenantID string) erro
 	defer m.mu.Unlock()
 
 	// Check jika consumer sudah ada
-	if _, exists := m.consumers[tenantID]; exists {
-		return fmt.Errorf("consumer already exists for tenant %s", tenantID)
-	}
+	// if _, exists := m.consumers[tenantID]; exists {
+	// 	return fmt.Errorf("consumer already exists for tenant %s", tenantID)
+	// }
 
 	// Buat channel
 	ch, err := m.rabbitConn.Channel()
@@ -128,25 +131,202 @@ func (m *TenantManager) StopConsumer(ctx context.Context, tenantID string) error
 	return m.stopConsumer(ctx, tenantID)
 }
 
+// DebugRabbitMQState prints detailed information about RabbitMQ state
+func (m *TenantManager) DebugRabbitMQState(ctx context.Context, tenantID string) {
+	logger.Log.WithField("tenant_id", tenantID).Info("=== DEBUG: RabbitMQ State ===")
+	
+	// Log internal state
+	m.mu.RLock()
+	consumer, exists := m.consumers[tenantID]
+	allConsumers := make(map[string]bool)
+	for id := range m.consumers {
+		allConsumers[id] = true
+	}
+	m.mu.RUnlock()
+	
+	logger.Log.WithFields(map[string]interface{}{
+		"tenant_id": tenantID,
+		"consumer_exists_in_map": exists,
+		"all_consumers": allConsumers,
+	}).Info("TenantManager internal state")
+	
+	if exists {
+		logger.Log.WithFields(map[string]interface{}{
+			"tenant_id": tenantID,
+			"consumer_tag": consumer.ConsumerTag,
+			"is_active": consumer.IsActive,
+			"channel_nil": consumer.Channel == nil,
+		}).Info("Consumer details")
+	}
+	
+	// Try to get RabbitMQ state
+	ch, err := m.rabbitConn.Channel()
+	if err != nil {
+		logger.Log.WithFields(map[string]interface{}{
+			"tenant_id": tenantID,
+			"error": err.Error(),
+		}).Error("Failed to open channel for debug")
+		return
+	}
+	defer ch.Close()
+	
+	// Check if queue exists
+	queueName := fmt.Sprintf("tenant.%s", tenantID)
+	queue, err := ch.QueueInspect(queueName)
+	if err != nil {
+		logger.Log.WithFields(map[string]interface{}{
+			"tenant_id": tenantID,
+			"queue_name": queueName,
+			"error": err.Error(),
+		}).Info("Queue does not exist or cannot be inspected")
+	} else {
+		logger.Log.WithFields(map[string]interface{}{
+			"tenant_id": tenantID,
+			"queue_name": queue.Name,
+			"queue_messages": queue.Messages,
+			"queue_consumers": queue.Consumers,
+		}).Info("Queue exists")
+	}
+	
+	logger.Log.Info("=== END DEBUG: RabbitMQ State ===")
+}
+
 // stopConsumer menghentikan consumer (internal method, assumes lock is held)
 func (m *TenantManager) stopConsumer(ctx context.Context, tenantID string) error {
+	logger.Log.WithField("tenant_id", tenantID).Info("Starting consumer stop process")
+	
+	// Cek apakah consumer ada
 	consumer, exists := m.consumers[tenantID]
 	if !exists {
+		logger.Log.WithField("tenant_id", tenantID).Warn("Consumer not found in internal map")
 		return fmt.Errorf("consumer not found for tenant %s", tenantID)
 	}
+	
+	logger.Log.WithFields(map[string]interface{}{
+		"tenant_id": tenantID,
+		"consumer_tag": consumer.ConsumerTag,
+		"is_active": consumer.IsActive,
+	}).Info("Found consumer in internal map")
 
-	// Signal stop ke message processing goroutine
+	// First, signal stop to message processing goroutine
+	logger.Log.WithField("tenant_id", tenantID).Info("Signaling stop to consumer goroutine")
 	close(consumer.StopChannel)
 
-	// Close channel
+	// Try to cancel the consumer
 	if consumer.Channel != nil {
+		logger.Log.WithField("tenant_id", tenantID).Info("Attempting to cancel consumer")
+		
+		// Cancel consumer - don't use goroutine to avoid complexity
+		if err := consumer.Channel.Cancel(consumer.ConsumerTag, false); err != nil {
+			logger.Log.WithFields(map[string]interface{}{
+				"tenant_id": tenantID,
+				"error":     err,
+			}).Warn("Failed to cancel consumer, will force close channel")
+		} else {
+			logger.Log.WithField("tenant_id", tenantID).Info("Successfully canceled consumer")
+		}
+
+		// Close the channel
+		logger.Log.WithField("tenant_id", tenantID).Info("Closing channel")
 		if err := consumer.Channel.Close(); err != nil {
-			return fmt.Errorf("failed to close channel: %v", err)
+			logger.Log.WithFields(map[string]interface{}{
+				"tenant_id": tenantID,
+				"error":     err,
+			}).Warn("Failed to close channel, continuing with cleanup")
+		} else {
+			logger.Log.WithField("tenant_id", tenantID).Info("Successfully closed channel")
 		}
 	}
 
-	// Hapus consumer
+	// Delete the queue - simpler approach without goroutines
+	logger.Log.WithField("tenant_id", tenantID).Info("Creating channel for queue deletion")
+	
+	// Create a new channel for queue deletion
+	ch, err := m.rabbitConn.Channel()
+	if err != nil {
+		logger.Log.WithFields(map[string]interface{}{
+			"tenant_id": tenantID,
+			"error":     err,
+		}).Error("Failed to open channel for queue deletion")
+		// Still remove the consumer from our map
+		delete(m.consumers, tenantID)
+		return fmt.Errorf("failed to open channel for queue deletion: %v", err)
+	}
+	defer ch.Close()
+
+	// Queue name
+	queueName := fmt.Sprintf("tenant.%s", tenantID)
+	logger.Log.WithFields(map[string]interface{}{
+		"tenant_id":  tenantID,
+		"queue_name": queueName,
+	}).Info("Attempting to delete queue")
+	
+	// Delete queue directly
+	_, err = ch.QueueDelete(
+		queueName, // queue name
+		false,     // ifUnused - delete even if queue has consumers
+		false,     // ifEmpty - delete even if queue has messages
+		false,     // noWait - wait for server response
+	)
+	
+	if err != nil {
+		logger.Log.WithFields(map[string]interface{}{
+			"tenant_id":  tenantID,
+			"queue_name": queueName,
+			"error":      err,
+		}).Error("Failed to delete queue")
+		// Still remove the consumer from our map
+		delete(m.consumers, tenantID)
+		return fmt.Errorf("failed to delete queue: %v", err)
+	}
+	
+	logger.Log.WithFields(map[string]interface{}{
+		"tenant_id":  tenantID,
+		"queue_name": queueName,
+	}).Info("Successfully deleted queue")
+
+	// Hapus consumer dari map
+	logger.Log.WithField("tenant_id", tenantID).Info("Removing consumer from internal map")
 	delete(m.consumers, tenantID)
+
+	// Verifikasi sederhana - coba periksa apakah queue masih ada
+	func() {
+		// Gunakan defer/recover untuk menangkap panic
+		defer func() {
+			if r := recover(); r != nil {
+				logger.Log.WithFields(map[string]interface{}{
+					"tenant_id": tenantID,
+					"panic":     r,
+				}).Warn("Panic during queue verification")
+			}
+		}()
+		
+		verifyChannel, err := m.rabbitConn.Channel()
+		if err != nil {
+			logger.Log.WithFields(map[string]interface{}{
+				"tenant_id": tenantID,
+				"error":     err,
+			}).Warn("Could not verify queue deletion - failed to open channel")
+			return
+		}
+		defer verifyChannel.Close()
+
+		// Coba inspeksi queue - seharusnya gagal karena queue sudah dihapus
+		_, err = verifyChannel.QueueInspect(queueName)
+		if err != nil {
+			// Ini bagus - artinya queue sudah tidak ada
+			logger.Log.WithFields(map[string]interface{}{
+				"tenant_id":  tenantID,
+				"queue_name": queueName,
+			}).Info("Verified queue has been successfully removed")
+		} else {
+			// Ini buruk - queue masih ada
+			logger.Log.WithFields(map[string]interface{}{
+				"tenant_id":  tenantID,
+				"queue_name": queueName,
+			}).Warn("Queue still exists after deletion attempt!")
+		}
+	}()
 
 	return nil
 }
@@ -156,6 +336,49 @@ func (m *TenantManager) GetConsumer(tenantID string) *domain.TenantConsumer {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.consumers[tenantID]
+}
+
+// logRabbitMQState logs the current state of RabbitMQ connections, channels, and consumers
+func (m *TenantManager) logRabbitMQState(ctx context.Context, tenantID string) {
+	// Log internal state first
+	m.mu.RLock()
+	consumer, exists := m.consumers[tenantID]
+	m.mu.RUnlock()
+
+	logFields := map[string]interface{}{
+		"tenant_id": tenantID,
+		"consumer_exists_in_map": exists,
+	}
+
+	if exists {
+		logFields["consumer_tag"] = consumer.ConsumerTag
+		logFields["is_active"] = consumer.IsActive
+		logFields["channel_nil"] = consumer.Channel == nil
+	}
+
+	// Try to get RabbitMQ state
+	ch, err := m.rabbitConn.Channel()
+	if err != nil {
+		logFields["error_getting_channel"] = err.Error()
+		logger.Log.WithFields(logFields).Info("RabbitMQ state - failed to get channel")
+		return
+	}
+	defer ch.Close()
+
+	// Check if queue exists
+	queueName := fmt.Sprintf("tenant.%s", tenantID)
+	queue, err := ch.QueueInspect(queueName)
+	if err != nil {
+		logFields["queue_error"] = err.Error()
+		logFields["queue_exists"] = false
+	} else {
+		logFields["queue_exists"] = true
+		logFields["queue_name"] = queue.Name
+		logFields["queue_messages"] = queue.Messages
+		logFields["queue_consumers"] = queue.Consumers
+	}
+
+	logger.Log.WithFields(logFields).Info("RabbitMQ state")
 }
 
 // GetAllConsumers mendapatkan semua active consumers
@@ -218,7 +441,10 @@ func (m *TenantManager) processMessages(consumer *domain.TenantConsumer, msgs <-
 				return
 			}
 			// Process message
-			log.Printf("Processing message for tenant %s: %s", consumer.TenantID, string(msg.Body))
+			logger.Log.WithFields(map[string]interface{}{
+				"tenant_id": consumer.TenantID,
+				"message": string(msg.Body),
+			}).Info("Processing message for tenant")
 			msg.Ack(false)
 		}
 	}
@@ -239,7 +465,7 @@ func (m *TenantManager) healthCheck(ctx context.Context) {
 			// Check RabbitMQ connection
 			ch, err := m.rabbitConn.Channel()
 			if err != nil {
-				log.Printf("RabbitMQ health check failed: %v", err)
+				logger.Log.WithError(err).Error("RabbitMQ health check failed")
 				continue
 			}
 			ch.Close()
@@ -248,10 +474,13 @@ func (m *TenantManager) healthCheck(ctx context.Context) {
 			m.mu.RLock()
 			for id, consumer := range m.consumers {
 				if !consumer.IsActive {
-					log.Printf("Consumer inactive for tenant %s, attempting to restart", id)
+					logger.Log.WithField("tenant_id", id).Warn("Consumer inactive for tenant, attempting to restart")
 					m.mu.RUnlock()
-					if err := m.restartConsumer(ctx, id); err != nil {
-						log.Printf("Failed to restart consumer for tenant %s: %v", id, err)
+					if err = m.restartConsumer(ctx, id); err != nil {
+						logger.Log.WithFields(map[string]interface{}{
+							"tenant_id": id,
+							"error": err,
+						}).Error("Failed to restart consumer for tenant")
 					}
 					m.mu.RLock()
 				}

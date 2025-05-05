@@ -11,6 +11,9 @@ services:
       - ./backend-golang/internal:/app/internal:delegated
       - ./backend-golang/pkg:/app/pkg:delegated
       - ./backend-golang/api:/app/api:delegated
+      - ./backend-golang/configs:/app/configs:delegated
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/go/cache
       - /app/.git
     depends_on:
       - postgres
@@ -27,12 +30,16 @@ services:
       - REDIS_PORT=6379
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672
+      - GOMODCACHE=/go/pkg/mod
+      - GOCACHE=/go/cache
     command: >
-      sh -c "if [ \"$$GO_ENV\" = \"development\" ]; then
-        go run -v cmd/serve/main.go;
-      else
-        /app/backend-golang;
-      fi"
+      sh -c "until nc -z rabbitmq 5672; do echo waiting for rabbitmq; sleep 2; done;
+        if [ \"$$GO_ENV\" = \"development\" ]; then
+          [ -f /go/pkg/mod/cache/download/sumdb/sum.golang.org/latest ] || go mod download;
+          go install -v cmd/serve/main.go && /go/bin/main;
+        else
+          /app/backend-golang;
+        fi"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 10s
@@ -128,3 +135,4 @@ volumes:
   postgres_data:
   redis_data:
   go-mod-cache:
+  go-build-cache:

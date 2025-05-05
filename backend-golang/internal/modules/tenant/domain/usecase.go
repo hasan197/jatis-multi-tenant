@@ -16,6 +16,7 @@ type TenantManager interface {
 	AddConsumer(tenantID string, consumer *TenantConsumer)
 	RemoveConsumer(tenantID string)
 	UpdateHeartbeat(tenantID string)
+	DebugRabbitMQState(ctx context.Context, tenantID string)
 }
 
 // TenantUseCase interface untuk business logic tenant
