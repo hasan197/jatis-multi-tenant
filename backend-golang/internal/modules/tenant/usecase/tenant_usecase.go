@@ -32,6 +32,13 @@ func (u *TenantUseCase) Create(ctx context.Context, tenant *domain.Tenant) error
 	if err := u.repo.Create(ctx, tenant); err != nil {
 		return fmt.Errorf("failed to create tenant: %v", err)
 	}
+
+	// Start consumer untuk tenant baru
+	if err := u.manager.StartConsumer(ctx, tenant.ID); err != nil {
+		// Log error tapi jangan return error karena tenant sudah dibuat
+		fmt.Printf("Warning: failed to start consumer for tenant %s: %v\n", tenant.ID, err)
+	}
+
 	return nil
 }
 

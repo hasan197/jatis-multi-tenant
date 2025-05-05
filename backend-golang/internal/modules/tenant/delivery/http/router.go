@@ -11,6 +11,7 @@ func RegisterRoutes(e *echo.Echo, h *TenantHandler) {
 	tenants.POST("", h.CreateTenant)
 	tenants.DELETE("/:id", h.DeleteTenant)
 	tenants.GET("/consumers", h.GetTenantConsumers)
+	tenants.GET("/:id/consumers", h.GetTenantConsumers)
 	
 	// tenants.POST("", h.Create)
 	tenants.GET("", h.List)

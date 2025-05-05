@@ -127,6 +127,26 @@ func (h *TenantHandler) DeleteTenant(c echo.Context) error {
 
 // GetTenantConsumers handles getting all tenant consumers
 func (h *TenantHandler) GetTenantConsumers(c echo.Context) error {
+	// Get tenant ID from path parameter
+	tenantID := c.Param("id")
+	if tenantID != "" {
+		// Get consumer for specific tenant
+		consumers, err := h.tenantUseCase.GetConsumers(c.Request().Context())
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		}
+
+		// Filter consumers by tenant ID
+		for _, consumer := range consumers {
+			if consumer.TenantID == tenantID {
+				return c.JSON(http.StatusOK, consumer)
+			}
+		}
+
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "consumer not found"})
+	}
+
+	// Get all consumers
 	consumers, err := h.tenantUseCase.GetConsumers(c.Request().Context())
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})

@@ -1,0 +1,916 @@
+openapi: 3.0.3
+info:
+  title: Multi-Tenant Messaging System API
+  description: API for managing multi-tenant messaging with dynamic consumer management and partitioned data storage
+  version: 1.0.0
+  contact:
+    name: Jatis Team
+    email: support@jatis.com
+servers:
+  - url: http://localhost:8080/api
+    description: Local development server
+tags:
+  - name: tenants
+    description: Tenant management operations
+  - name: messages
+    description: Message operations
+  - name: users
+    description: User management operations
+
+paths:
+  /tenants:
+    get:
+      tags:
+        - tenants
+      summary: List all tenants
+      description: Returns all tenants
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tenant'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    post:
+      tags:
+        - tenants
+      summary: Create a new tenant
+      description: Create a new tenant and auto-spawn RabbitMQ consumer
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantCreate'
+      responses:
+        '201':
+          description: Tenant created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /tenants/{id}:
+    get:
+      tags:
+        - tenants
+      summary: Get tenant by ID
+      description: Returns a single tenant
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the tenant
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    put:
+      tags:
+        - tenants
+      summary: Update a tenant
+      description: Update an existing tenant
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the tenant to update
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantUpdate'
+      responses:
+        '200':
+          description: Tenant updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    delete:
+      tags:
+        - tenants
+      summary: Delete a tenant
+      description: Delete a tenant and auto-stop RabbitMQ consumer
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the tenant to delete
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Tenant deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /tenants/{id}/config/concurrency:
+    put:
+      tags:
+        - tenants
+      summary: Configure tenant concurrency
+      description: Configure the number of workers for a tenant
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the tenant
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - workers
+              properties:
+                workers:
+                  type: integer
+                  minimum: 1
+                  example: 5
+      responses:
+        '200':
+          description: Concurrency configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /tenants/consumers:
+    get:
+      tags:
+        - tenants
+      summary: List all tenant consumers
+      description: Returns all active tenant consumers
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TenantConsumer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /tenants/{tenant_id}/messages:
+    get:
+      tags:
+        - messages
+      summary: Get messages by tenant
+      description: Returns all messages for a specific tenant
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          description: ID of the tenant
+          schema:
+            type: string
+            format: uuid
+        - name: cursor
+          in: query
+          description: Cursor for pagination
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+                  next_cursor:
+                    type: string
+                    example: "456"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    post:
+      tags:
+        - messages
+      summary: Create a new message
+      description: Create a new message for a specific tenant
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          description: ID of the tenant
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageCreate'
+      responses:
+        '201':
+          description: Message created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /tenants/{tenant_id}/messages/{id}:
+    get:
+      tags:
+        - messages
+      summary: Get message by ID
+      description: Get a specific message by ID for a tenant
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          description: ID of the tenant
+          schema:
+            type: string
+            format: uuid
+        - name: id
+          in: path
+          required: true
+          description: ID of the message
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    put:
+      tags:
+        - messages
+      summary: Update a message
+      description: Update an existing message
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          description: ID of the tenant
+          schema:
+            type: string
+            format: uuid
+        - name: id
+          in: path
+          required: true
+          description: ID of the message to update
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageUpdate'
+      responses:
+        '200':
+          description: Message updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    delete:
+      tags:
+        - messages
+      summary: Delete a message
+      description: Delete an existing message
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          description: ID of the tenant
+          schema:
+            type: string
+            format: uuid
+        - name: id
+          in: path
+          required: true
+          description: ID of the message to delete
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Message deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+  /users:
+    get:
+      tags:
+        - users
+      summary: Get all users
+      description: Get list of all users
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    post:
+      tags:
+        - users
+      summary: Create a new user
+      description: Create a new user
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /users/{id}:
+    get:
+      tags:
+        - users
+      summary: Get user by ID
+      description: Get a specific user by ID
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the user
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    put:
+      tags:
+        - users
+      summary: Update a user
+      description: Update an existing user
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the user to update
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    delete:
+      tags:
+        - users
+      summary: Delete a user
+      description: Delete an existing user
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the user to delete
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: User deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  schemas:
+    Tenant:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        name:
+          type: string
+          example: "Test Tenant"
+        description:
+          type: string
+          example: "Test tenant for partition testing"
+        status:
+          type: string
+          enum: [active, inactive]
+          example: "active"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - status
+    
+    TenantCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Test Tenant"
+        description:
+          type: string
+          example: "Test tenant for partition testing"
+        status:
+          type: string
+          enum: [active, inactive]
+          example: "active"
+      required:
+        - name
+        - status
+    
+    TenantUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Updated Tenant Name"
+        description:
+          type: string
+          example: "Updated tenant description"
+        status:
+          type: string
+          enum: [active, inactive]
+          example: "active"
+    
+    TenantConfig:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        workers:
+          type: integer
+          example: 5
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - tenant_id
+        - workers
+    
+    TenantConsumer:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        consumer_tag:
+          type: string
+          example: "tenant_123e4567_consumer"
+        status:
+          type: string
+          enum: [active, inactive]
+          example: "active"
+        queue_name:
+          type: string
+          example: "tenant_123e4567_queue"
+        workers:
+          type: integer
+          example: 5
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - tenant_id
+        - consumer_tag
+        - status
+        - queue_name
+    
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        tenant_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174001"
+        content:
+          type: string
+          example: "Test message content"
+        sender:
+          type: string
+          example: "user1"
+        recipient:
+          type: string
+          example: "user2"
+        payload:
+          type: object
+          example: {"key": "value", "data": "example"}
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - tenant_id
+        - content
+        
+    MessageCreate:
+      type: object
+      properties:
+        content:
+          type: string
+          example: "Test message content"
+        sender:
+          type: string
+          example: "user1"
+        recipient:
+          type: string
+          example: "user2"
+      required:
+        - content
+        - sender
+        - recipient
+        
+    MessageUpdate:
+      type: object
+      properties:
+        content:
+          type: string
+          example: "Updated message content"
+        sender:
+          type: string
+          example: "user1"
+        recipient:
+          type: string
+          example: "user2"
+      required:
+        - content
+    
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        username:
+          type: string
+          example: "testuser"
+        email:
+          type: string
+          format: email
+          example: "test@example.com"
+        full_name:
+          type: string
+          example: "Test User"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - username
+        - email
+        - full_name
+    
+    UserCreate:
+      type: object
+      properties:
+        username:
+          type: string
+          example: "testuser"
+        email:
+          type: string
+          format: email
+          example: "test@example.com"
+        full_name:
+          type: string
+          example: "Test User"
+        password:
+          type: string
+          format: password
+          example: "password123"
+      required:
+        - username
+        - email
+        - full_name
+        - password
+    
+    UserUpdate:
+      type: object
+      properties:
+        username:
+          type: string
+          example: "updateduser"
+        email:
+          type: string
+          format: email
+          example: "updated@example.com"
+        full_name:
+          type: string
+          example: "Updated User"
+      required:
+        - username
+        - email
+        - full_name
+    
+    PaginationMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 100
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 10
+        pages:
+          type: integer
+          example: 10
+      required:
+        - total
+        - page
+        - limit
+        - pages
+    
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "BAD_REQUEST"
+        message:
+          type: string
+          example: "Invalid input data"
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: "name"
+              message:
+                type: string
+                example: "Field is required"
+      required:
+        - code
+        - message
+  
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

@@ -17,14 +17,14 @@ type Tenant struct {
 
 // TenantConsumer represents a RabbitMQ consumer for a tenant
 type TenantConsumer struct {
-	TenantID      string
-	QueueName     string
-	ConsumerTag   string
-	Channel       interface{}
-	StopChannel   chan struct{}
-	IsActive      bool
-	LastHeartbeat time.Time
-	ErrorChannel  chan error
+	TenantID      string    `json:"tenant_id"`
+	QueueName     string    `json:"queue_name"`
+	ConsumerTag   string    `json:"consumer_tag"`
+	Channel       interface{} `json:"-"`
+	StopChannel   chan struct{} `json:"-"`
+	IsActive      bool      `json:"is_active"`
+	LastHeartbeat time.Time `json:"last_heartbeat"`
+	ErrorChannel  chan error `json:"-"`
 }
 
 // TenantManager interface untuk mengelola tenant consumers

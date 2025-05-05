@@ -126,6 +126,18 @@ func NewService(cfg *config.Config) (*Service, error) {
 		return nil, fmt.Errorf("failed to start tenant manager: %v", err)
 	}
 
+	// Start consumers for existing tenants
+	tenants, err := tenantRepo.List(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("failed to list tenants: %v", err)
+	}
+
+	for _, tenant := range tenants {
+		if err := tenantManager.StartConsumer(context.Background(), tenant.ID); err != nil {
+			fmt.Printf("Warning: failed to start consumer for tenant %s: %v\n", tenant.ID, err)
+		}
+	}
+
 	return &Service{
 		Config:        cfg,
 		Pool:          pool,
