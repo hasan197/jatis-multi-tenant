@@ -35,7 +35,7 @@ func NewMessageRepository(pool *pgxpool.Pool) domain.MessageRepository {
 // Create creates a new message
 func (r *MessageRepository) Create(ctx context.Context, message *domain.Message) error {
 	// Buat partisi terlebih dahulu
-	_, err := r.db.Exec(ctx, "SELECT ensure_messages_partition($1)", message.TenantID)
+	_, err := r.db.Exec(ctx, "SELECT create_messages_partition($1)", message.TenantID)
 	if err != nil {
 		return err
 	}

@@ -22,6 +22,7 @@ func NewMessageUsecase(messageRepo domain.MessageRepository) *MessageUsecase {
 
 // Create creates a new message
 func (u *MessageUsecase) Create(ctx context.Context, message *domain.Message) error {
+	message.ID = uuid.New()
 	message.CreatedAt = time.Now()
 	message.UpdatedAt = time.Now()
 	return u.messageRepo.Create(ctx, message)
