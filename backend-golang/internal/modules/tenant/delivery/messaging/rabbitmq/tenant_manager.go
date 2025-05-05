@@ -195,11 +195,37 @@ func (m *TenantManager) DebugRabbitMQState(ctx context.Context, tenantID string)
 func (m *TenantManager) stopConsumer(ctx context.Context, tenantID string) error {
 	logger.Log.WithField("tenant_id", tenantID).Info("Starting consumer stop process")
 	
-	// Cek apakah consumer ada
+	// Cek dan dapatkan consumer
+	consumer, err := m.getAndValidateConsumer(tenantID)
+	if err != nil {
+		return err
+	}
+
+	// Stop consumer dan channel
+	if err := m.stopConsumerAndChannel(tenantID, consumer); err != nil {
+		logger.Log.WithError(err).Warn("Error stopping consumer and channel")
+	}
+
+	// Delete queue
+	if err := m.deleteQueue(tenantID); err != nil {
+		return err
+	}
+
+	// Hapus consumer dari map
+	m.removeConsumerFromMap(tenantID)
+
+	// Verifikasi queue sudah terhapus
+	m.verifyQueueDeletion(tenantID)
+
+	return nil
+}
+
+// getAndValidateConsumer mendapatkan dan memvalidasi consumer
+func (m *TenantManager) getAndValidateConsumer(tenantID string) (*domain.TenantConsumer, error) {
 	consumer, exists := m.consumers[tenantID]
 	if !exists {
 		logger.Log.WithField("tenant_id", tenantID).Warn("Consumer not found in internal map")
-		return fmt.Errorf("consumer not found for tenant %s", tenantID)
+		return nil, fmt.Errorf("consumer not found for tenant %s", tenantID)
 	}
 	
 	logger.Log.WithFields(map[string]interface{}{
@@ -208,60 +234,64 @@ func (m *TenantManager) stopConsumer(ctx context.Context, tenantID string) error
 		"is_active": consumer.IsActive,
 	}).Info("Found consumer in internal map")
 
-	// First, signal stop to message processing goroutine
+	return consumer, nil
+}
+
+// stopConsumerAndChannel menghentikan consumer dan menutup channel
+func (m *TenantManager) stopConsumerAndChannel(tenantID string, consumer *domain.TenantConsumer) error {
+	// Signal stop ke message processing goroutine
 	logger.Log.WithField("tenant_id", tenantID).Info("Signaling stop to consumer goroutine")
 	close(consumer.StopChannel)
 
-	// Try to cancel the consumer
-	if consumer.Channel != nil {
-		logger.Log.WithField("tenant_id", tenantID).Info("Attempting to cancel consumer")
-		
-		// Cancel consumer - don't use goroutine to avoid complexity
-		if err := consumer.Channel.Cancel(consumer.ConsumerTag, false); err != nil {
-			logger.Log.WithFields(map[string]interface{}{
-				"tenant_id": tenantID,
-				"error":     err,
-			}).Warn("Failed to cancel consumer, will force close channel")
-		} else {
-			logger.Log.WithField("tenant_id", tenantID).Info("Successfully canceled consumer")
-		}
-
-		// Close the channel
-		logger.Log.WithField("tenant_id", tenantID).Info("Closing channel")
-		if err := consumer.Channel.Close(); err != nil {
-			logger.Log.WithFields(map[string]interface{}{
-				"tenant_id": tenantID,
-				"error":     err,
-			}).Warn("Failed to close channel, continuing with cleanup")
-		} else {
-			logger.Log.WithField("tenant_id", tenantID).Info("Successfully closed channel")
-		}
+	if consumer.Channel == nil {
+		return nil
 	}
 
-	// Delete the queue - simpler approach without goroutines
+	// Cancel consumer
+	logger.Log.WithField("tenant_id", tenantID).Info("Attempting to cancel consumer")
+	if err := consumer.Channel.Cancel(consumer.ConsumerTag, false); err != nil {
+		logger.Log.WithFields(map[string]interface{}{
+			"tenant_id": tenantID,
+			"error":     err,
+		}).Warn("Failed to cancel consumer, will force close channel")
+	} else {
+		logger.Log.WithField("tenant_id", tenantID).Info("Successfully canceled consumer")
+	}
+
+	// Close channel
+	logger.Log.WithField("tenant_id", tenantID).Info("Closing channel")
+	if err := consumer.Channel.Close(); err != nil {
+		logger.Log.WithFields(map[string]interface{}{
+			"tenant_id": tenantID,
+			"error":     err,
+		}).Warn("Failed to close channel, continuing with cleanup")
+		return err
+	}
+	
+	logger.Log.WithField("tenant_id", tenantID).Info("Successfully closed channel")
+	return nil
+}
+
+// deleteQueue menghapus queue dari RabbitMQ
+func (m *TenantManager) deleteQueue(tenantID string) error {
 	logger.Log.WithField("tenant_id", tenantID).Info("Creating channel for queue deletion")
 	
-	// Create a new channel for queue deletion
 	ch, err := m.rabbitConn.Channel()
 	if err != nil {
 		logger.Log.WithFields(map[string]interface{}{
 			"tenant_id": tenantID,
 			"error":     err,
 		}).Error("Failed to open channel for queue deletion")
-		// Still remove the consumer from our map
-		delete(m.consumers, tenantID)
 		return fmt.Errorf("failed to open channel for queue deletion: %v", err)
 	}
 	defer ch.Close()
 
-	// Queue name
 	queueName := fmt.Sprintf("tenant.%s", tenantID)
 	logger.Log.WithFields(map[string]interface{}{
 		"tenant_id":  tenantID,
 		"queue_name": queueName,
 	}).Info("Attempting to delete queue")
 	
-	// Delete queue directly
 	_, err = ch.QueueDelete(
 		queueName, // queue name
 		false,     // ifUnused - delete even if queue has consumers
@@ -275,8 +305,6 @@ func (m *TenantManager) stopConsumer(ctx context.Context, tenantID string) error
 			"queue_name": queueName,
 			"error":      err,
 		}).Error("Failed to delete queue")
-		// Still remove the consumer from our map
-		delete(m.consumers, tenantID)
 		return fmt.Errorf("failed to delete queue: %v", err)
 	}
 	
@@ -285,50 +313,49 @@ func (m *TenantManager) stopConsumer(ctx context.Context, tenantID string) error
 		"queue_name": queueName,
 	}).Info("Successfully deleted queue")
 
-	// Hapus consumer dari map
+	return nil
+}
+
+// removeConsumerFromMap menghapus consumer dari internal map
+func (m *TenantManager) removeConsumerFromMap(tenantID string) {
 	logger.Log.WithField("tenant_id", tenantID).Info("Removing consumer from internal map")
 	delete(m.consumers, tenantID)
+}
 
-	// Verifikasi sederhana - coba periksa apakah queue masih ada
-	func() {
-		// Gunakan defer/recover untuk menangkap panic
-		defer func() {
-			if r := recover(); r != nil {
-				logger.Log.WithFields(map[string]interface{}{
-					"tenant_id": tenantID,
-					"panic":     r,
-				}).Warn("Panic during queue verification")
-			}
-		}()
-		
-		verifyChannel, err := m.rabbitConn.Channel()
-		if err != nil {
+// verifyQueueDeletion memverifikasi bahwa queue sudah terhapus
+func (m *TenantManager) verifyQueueDeletion(tenantID string) {
+	defer func() {
+		if r := recover(); r != nil {
 			logger.Log.WithFields(map[string]interface{}{
 				"tenant_id": tenantID,
-				"error":     err,
-			}).Warn("Could not verify queue deletion - failed to open channel")
-			return
-		}
-		defer verifyChannel.Close()
-
-		// Coba inspeksi queue - seharusnya gagal karena queue sudah dihapus
-		_, err = verifyChannel.QueueInspect(queueName)
-		if err != nil {
-			// Ini bagus - artinya queue sudah tidak ada
-			logger.Log.WithFields(map[string]interface{}{
-				"tenant_id":  tenantID,
-				"queue_name": queueName,
-			}).Info("Verified queue has been successfully removed")
-		} else {
-			// Ini buruk - queue masih ada
-			logger.Log.WithFields(map[string]interface{}{
-				"tenant_id":  tenantID,
-				"queue_name": queueName,
-			}).Warn("Queue still exists after deletion attempt!")
+				"panic":     r,
+			}).Warn("Panic during queue verification")
 		}
 	}()
+	
+	verifyChannel, err := m.rabbitConn.Channel()
+	if err != nil {
+		logger.Log.WithFields(map[string]interface{}{
+			"tenant_id": tenantID,
+			"error":     err,
+		}).Warn("Could not verify queue deletion - failed to open channel")
+		return
+	}
+	defer verifyChannel.Close()
 
-	return nil
+	queueName := fmt.Sprintf("tenant.%s", tenantID)
+	_, err = verifyChannel.QueueInspect(queueName)
+	if err != nil {
+		logger.Log.WithFields(map[string]interface{}{
+			"tenant_id":  tenantID,
+			"queue_name": queueName,
+		}).Info("Verified queue has been successfully removed")
+	} else {
+		logger.Log.WithFields(map[string]interface{}{
+			"tenant_id":  tenantID,
+			"queue_name": queueName,
+		}).Warn("Queue still exists after deletion attempt!")
+	}
 }
 
 // GetConsumer mendapatkan consumer untuk tenant tertentu
