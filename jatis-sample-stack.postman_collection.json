@@ -1,0 +1,514 @@
+{
+	"info": {
+		"_postman_id": "a5e4b3c2-1d09-4f8a-b7e6-c8d9e0f1a2b3",
+		"name": "Jatis Sample Stack Golang",
+		"description": "API collection for Jatis Sample Stack Golang application",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Tenants",
+			"item": [
+				{
+					"name": "Create Tenant",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Test Tenant\",\n    \"description\": \"Test tenant for partition testing\",\n    \"status\": \"active\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/tenants",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"tenants"
+							]
+						},
+						"description": "Create a new tenant"
+					}
+				},
+				{
+					"name": "List Tenants",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8080/api/tenants",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"tenants"
+							]
+						},
+						"description": "Get list of all tenants"
+					}
+				},
+				{
+					"name": "Get Tenant by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8080/api/tenants/:id",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"tenants",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "tenant-id-here",
+									"description": "ID of the tenant"
+								}
+							]
+						},
+						"description": "Get a specific tenant by ID"
+					}
+				},
+				{
+					"name": "Update Tenant",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Tenant Name\",\n    \"description\": \"Updated tenant description\",\n    \"status\": \"active\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/tenants/:id",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"tenants",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "tenant-id-here",
+									"description": "ID of the tenant to update"
+								}
+							]
+						},
+						"description": "Update an existing tenant"
+					}
+				},
+				{
+					"name": "Delete Tenant",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8080/api/tenants/:id",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"tenants",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "tenant-id-here",
+									"description": "ID of the tenant to delete"
+								}
+							]
+						},
+						"description": "Delete a tenant"
+					}
+				},
+				{
+					"name": "Get Tenant Consumers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8080/api/tenants/consumers",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"tenants",
+								"consumers"
+							]
+						},
+						"description": "Get all tenant consumers"
+					}
+				}
+			],
+			"description": "Tenant management endpoints"
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Get Users",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8080/api/users",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"users"
+							]
+						},
+						"description": "Get list of all users"
+					}
+				},
+				{
+					"name": "Get User by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8080/api/users/:id",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"users",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "user-id-here",
+									"description": "ID of the user"
+								}
+							]
+						},
+						"description": "Get a specific user by ID"
+					}
+				},
+				{
+					"name": "Create User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"testuser\",\n    \"email\": \"test@example.com\",\n    \"full_name\": \"Test User\",\n    \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/users",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"users"
+							]
+						},
+						"description": "Create a new user"
+					}
+				},
+				{
+					"name": "Update User",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"updateduser\",\n    \"email\": \"updated@example.com\",\n    \"full_name\": \"Updated User\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/users/:id",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"users",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "user-id-here",
+									"description": "ID of the user to update"
+								}
+							]
+						},
+						"description": "Update an existing user"
+					}
+				},
+				{
+					"name": "Delete User",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8080/api/users/:id",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"users",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "user-id-here",
+									"description": "ID of the user to delete"
+								}
+							]
+						},
+						"description": "Delete a user"
+					}
+				}
+			],
+			"description": "User management endpoints"
+		},
+		{
+			"name": "Messages",
+			"item": [
+				{
+					"name": "Create Message",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\": \"Test message content\",\n    \"sender\": \"user1\",\n    \"recipient\": \"user2\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/tenants/:tenant_id/messages",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"tenants",
+								":tenant_id",
+								"messages"
+							],
+							"variable": [
+								{
+									"key": "tenant_id",
+									"value": "tenant-id-here",
+									"description": "ID of the tenant"
+								}
+							]
+						},
+						"description": "Create a new message for a specific tenant"
+					}
+				},
+				{
+					"name": "Get Messages by Tenant",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8080/api/tenants/:tenant_id/messages",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"tenants",
+								":tenant_id",
+								"messages"
+							],
+							"variable": [
+								{
+									"key": "tenant_id",
+									"value": "tenant-id-here",
+									"description": "ID of the tenant"
+								}
+							]
+						},
+						"description": "Get all messages for a specific tenant"
+					}
+				},
+				{
+					"name": "Get Message by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8080/api/tenants/:tenant_id/messages/:id",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"tenants",
+								":tenant_id",
+								"messages",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "tenant_id",
+									"value": "tenant-id-here",
+									"description": "ID of the tenant"
+								},
+								{
+									"key": "id",
+									"value": "message-id-here",
+									"description": "ID of the message"
+								}
+							]
+						},
+						"description": "Get a specific message by ID for a tenant"
+					}
+				},
+				{
+					"name": "Update Message",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\": \"Updated message content\",\n    \"sender\": \"user1\",\n    \"recipient\": \"user2\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/tenants/:tenant_id/messages/:id",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"tenants",
+								":tenant_id",
+								"messages",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "tenant_id",
+									"value": "tenant-id-here",
+									"description": "ID of the tenant"
+								},
+								{
+									"key": "id",
+									"value": "message-id-here",
+									"description": "ID of the message to update"
+								}
+							]
+						},
+						"description": "Update an existing message"
+					}
+				},
+				{
+					"name": "Delete Message",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8080/api/tenants/:tenant_id/messages/:id",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"tenants",
+								":tenant_id",
+								"messages",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "tenant_id",
+									"value": "tenant-id-here",
+									"description": "ID of the tenant"
+								},
+								{
+									"key": "id",
+									"value": "message-id-here",
+									"description": "ID of the message to delete"
+								}
+							]
+						},
+						"description": "Delete a message"
+					}
+				}
+			],
+			"description": "Message management endpoints (tenant-specific)"
+		}
+	]
+}

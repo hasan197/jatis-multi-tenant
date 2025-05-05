@@ -28,17 +28,3 @@ BEGIN
     );
 END;
 $$ LANGUAGE plpgsql;
-
--- Membuat trigger untuk memastikan partisi ada sebelum insert
-CREATE OR REPLACE FUNCTION ensure_messages_partition()
-RETURNS trigger AS $$
-BEGIN
-    PERFORM create_messages_partition(NEW.tenant_id);
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trigger_ensure_messages_partition
-    BEFORE INSERT ON messages
-    FOR EACH ROW
-    EXECUTE FUNCTION ensure_messages_partition(); 

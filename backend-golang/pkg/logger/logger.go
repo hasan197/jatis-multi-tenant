@@ -6,7 +6,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
-	"sample-stack-golang/pkg/config"
+	"sample-stack-golang/internal/config"
 )
 
 var (
@@ -15,9 +15,7 @@ var (
 )
 
 // InitLogger menginisialisasi logger dengan konfigurasi yang diberikan
-func InitLogger() error {
-	// Ambil konfigurasi dari Viper
-	cfg := config.GetConfig()
+func InitLogger(cfg *config.Config) error {
 	if cfg == nil {
 		return nil
 	}
@@ -27,15 +25,15 @@ func InitLogger() error {
 
 	// Setup log rotation
 	writer := &lumberjack.Logger{
-		Filename:   cfg.Logger.FilePath,
-		MaxSize:    cfg.Logger.MaxSize,    // megabytes
-		MaxBackups: cfg.Logger.MaxBackups,
-		MaxAge:     cfg.Logger.MaxAge,     // days
-		Compress:   cfg.Logger.Compress,
+		Filename:   cfg.Logging.FilePath,
+		MaxSize:    cfg.Logging.MaxSize,    // megabytes
+		MaxBackups: cfg.Logging.MaxBackups,
+		MaxAge:     cfg.Logging.MaxAge,     // days
+		Compress:   cfg.Logging.Compress,
 	}
 
 	// Buat direktori log jika belum ada
-	if err := os.MkdirAll(filepath.Dir(cfg.Logger.FilePath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(cfg.Logging.FilePath), 0755); err != nil {
 		return err
 	}
 
@@ -45,14 +43,14 @@ func InitLogger() error {
 	})
 
 	// Setup level
-	level, err := logrus.ParseLevel(cfg.Logger.Level)
+	level, err := logrus.ParseLevel(cfg.Logging.Level)
 	if err != nil {
 		level = logrus.InfoLevel
 	}
 	Log.SetLevel(level)
 
 	// Setup output
-	if cfg.Logger.ConsoleOutput {
+	if cfg.Logging.Output == "stdout" {
 		// Multi writer untuk file dan console
 		Log.SetOutput(writer)
 		Log.AddHook(&ConsoleHook{

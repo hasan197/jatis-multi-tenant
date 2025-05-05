@@ -7,21 +7,21 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"sample-stack-golang/internal/config"
 )
 
 // LifecycleManager mengatur lifecycle dari aplikasi
 type LifecycleManager struct {
 	container *Container
 	config    ConfigContainer
-	services  ServiceContainer
 }
 
 // NewLifecycleManager membuat instance baru dari LifecycleManager
-func NewLifecycleManager(container *Container, config ConfigContainer, services ServiceContainer) *LifecycleManager {
+func NewLifecycleManager(container *Container, config ConfigContainer) *LifecycleManager {
 	return &LifecycleManager{
 		container: container,
 		config:    config,
-		services:  services,
 	}
 }
 
@@ -62,7 +62,7 @@ func (lm *LifecycleManager) Shutdown(ctx context.Context) error {
 // Initialize menginisialisasi semua dependencies
 func Initialize() (*LifecycleManager, error) {
 	// Initialize configuration
-	configContainer, err := InitializeConfig()
+	cfg, err := config.Load()
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize config: %w", err)
 	}
@@ -70,19 +70,27 @@ func Initialize() (*LifecycleManager, error) {
 	// Create DI container
 	container := NewContainer()
 
-	// Register services
-	RegisterServices(container, configContainer.GetDB(), configContainer.GetConfig())
+	// Initialize database
+	pool, err := initDB(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize database: %w", err)
+	}
 
-	// Create service container
-	serviceContainer := NewServiceContainer(container)
+	// Create config container
+	configContainer := NewConfigContainer(cfg, pool)
+
+	// Register dependencies
+	container.Register("config", cfg)
+	container.Register("db", pool)
+	container.RegisterCloser(func() error {
+		if pool != nil {
+			pool.Close()
+		}
+		return nil
+	})
 
 	// Create lifecycle manager
-	manager := NewLifecycleManager(container, configContainer, serviceContainer)
+	manager := NewLifecycleManager(container, configContainer)
 
 	return manager, nil
-}
-
-// Services mengambil ServiceContainer
-func (lm *LifecycleManager) Services() ServiceContainer {
-	return lm.services
 } 

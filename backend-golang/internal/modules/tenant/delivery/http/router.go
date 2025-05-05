@@ -5,11 +5,16 @@ import (
 )
 
 // RegisterRoutes registers tenant routes
-func RegisterRoutes(e *echo.Echo, handler *TenantHandler) {
-	tenants := e.Group("/tenants")
-	tenants.POST("", handler.Create)
-	tenants.GET("", handler.List)
-	tenants.GET("/:id", handler.GetByID)
-	tenants.PUT("/:id", handler.Update)
-	tenants.DELETE("/:id", handler.Delete)
+func RegisterRoutes(e *echo.Echo, h *TenantHandler) {
+	// Tenant routes
+	tenants := e.Group("/api/tenants")
+	tenants.POST("", h.CreateTenant)
+	tenants.DELETE("/:id", h.DeleteTenant)
+	tenants.GET("/consumers", h.GetTenantConsumers)
+	
+	// tenants.POST("", h.Create)
+	tenants.GET("", h.List)
+	tenants.GET("/:id", h.GetByID)
+	tenants.PUT("/:id", h.Update)
+	tenants.DELETE("/:id", h.Delete)
 } 

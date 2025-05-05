@@ -80,10 +80,11 @@ Untuk menjalankan query SQL di database PostgreSQL:
 
 ```bash
 # Menjalankan query SQL langsung
-nerdctl exec -it postgres psql -U postgres -d postgres -c "SELECT * FROM users;"
+nerdctl exec -it jatis-sample-stack-golang-postgres-1 psql -U postgres -d sample_db -c "SELECT * FROM users;"
+nerdctl exec -it jatis-sample-stack-golang-postgres-1 psql -U postgres -d sample_db -c "\dt;"
 
 # Menjalankan file SQL
-nerdctl exec -i postgres psql -U postgres -d postgres < path/to/query.sql
+nerdctl exec -it jatis-sample-stack-golang-postgres-1 psql -U postgres -d sample_db < path/to/query.sql
 ```
 
 ### Menjalankan Perintah Go
@@ -92,13 +93,13 @@ Untuk menjalankan perintah Go di container:
 
 ```bash
 # Menjalankan go mod tidy
-nerdctl exec -it backend-golang go mod tidy
+nerdctl exec -it jatis-sample-stack-golang-backend-golang-1 go mod tidy
 
 # Menjalankan go test
-nerdctl exec -it backend-golang go test ./...
+nerdctl exec -it jatis-sample-stack-golang-backend-golang-1go test ./...
 
 # Menjalankan go build
-nerdctl exec -it backend-golang go build
+nerdctl exec -it jatis-sample-stack-golang-backend-golang-1 go build
 ```
 
 ### Menjalankan Perintah di Container Lainnya

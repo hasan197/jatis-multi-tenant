@@ -1,8 +1,17 @@
 app:
-  name: sample-stack
+  name: sample-stack-golang
   port: 8080
+  version: 1.0.0
+  env: development
 
-database:
+server:
+  port: 8080
+  read_timeout: 30
+  write_timeout: 30
+  idle_timeout: 120
+  jwt_secret: your-secret-key
+
+db:
   host: postgres
   port: 5432
   user: postgres
@@ -22,4 +31,9 @@ rabbitmq:
 logging:
   level: debug
   format: json
-  output: stdout 
+  output: stdout
+  file_path: logs/app.log
+  max_size: 100
+  max_backups: 3
+  max_age: 28
+  compress: true 

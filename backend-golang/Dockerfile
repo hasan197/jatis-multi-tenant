@@ -59,6 +59,9 @@ WORKDIR /app
 # Copy the binary from the builder stage
 COPY --from=builder /app/backend-golang /app/backend-golang
 
+# Copy configs directory
+COPY configs /app/configs
+
 # Expose port
 EXPOSE 8080
 

@@ -47,7 +47,7 @@ func InitializeConfig() (ConfigContainer, error) {
 	}
 
 	// Initialize database connection
-	pool, err := pgxpool.New(context.Background(), cfg.DatabaseURL)
+	pool, err := pgxpool.New(context.Background(), cfg.DB.DatabaseURL())
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}

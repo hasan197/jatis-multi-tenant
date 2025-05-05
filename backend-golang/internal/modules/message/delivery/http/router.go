@@ -6,7 +6,7 @@ import (
 
 // RegisterRoutes registers all message routes
 func (h *MessageHandler) RegisterRoutes(e *echo.Echo) {
-	messageGroup := e.Group("/api/v1/tenants/:tenant_id/messages")
+	messageGroup := e.Group("/api/tenants/:tenant_id/messages")
 	messageGroup.POST("", h.Create)
 	messageGroup.GET("", h.GetByTenant)
 	messageGroup.GET("/:id", h.GetByID)

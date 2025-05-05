@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -12,11 +15,12 @@ import (
 	"github.com/go-playground/validator/v10"
 	_ "github.com/lib/pq"
 	
+	"sample-stack-golang/internal/config"
 	"sample-stack-golang/internal/di"
 	"sample-stack-golang/pkg/infrastructure/metrics"
 	userHttp "sample-stack-golang/internal/modules/user/delivery/http"
 	tenantHttp "sample-stack-golang/internal/modules/tenant/delivery/http"
-	"sample-stack-golang/pkg/config"
+	messageHttp "sample-stack-golang/internal/modules/message/delivery/http"
 	"sample-stack-golang/pkg/logger"
 )
 
@@ -32,40 +36,29 @@ func (cv *CustomValidator) Validate(i interface{}) error {
 func main() {
 	fmt.Println("Starting application with hot reload...")
 	
-	// Load konfigurasi
-	cfg, err := config.LoadConfig("")
+	// Load configuration
+	cfg, err := config.Load()
 	if err != nil {
-		log.Fatal("Failed to load config:", err)
+		log.Fatalf("Failed to load configuration: %v", err)
 	}
 	fmt.Println("Configuration loaded successfully")
 	
 	// Inisialisasi logger
-	if err := logger.InitLogger(); err != nil {
+	if err := logger.InitLogger(cfg); err != nil {
 		log.Fatal("Failed to initialize logger:", err)
 	}
 	fmt.Println("Logger initialized successfully")
 	
 	fmt.Println("Initializing DI container...")
 
-	// Inisialisasi DI container dan lifecycle manager
-	manager, err := di.Initialize()
+	// Initialize service
+	service, err := di.NewService(cfg)
 	if err != nil {
-		log.Fatal("Failed to initialize DI container:", err)
+		log.Fatalf("Failed to initialize service: %v", err)
 	}
-	fmt.Println("DI container initialized successfully")
+	defer service.Close()
 
-	// Setup context dengan timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// Start lifecycle manager
-	fmt.Println("Starting lifecycle manager...")
-	if err := manager.Start(ctx); err != nil {
-		log.Fatal("Failed to start lifecycle manager:", err)
-	}
-	fmt.Println("Lifecycle manager started successfully")
-
-	// Inisialisasi Echo
+	// Initialize Echo
 	e := echo.New()
 
 	// Setup validator
@@ -74,14 +67,10 @@ func main() {
 	// Setup metrics
 	metrics.SetupMetrics(e)
 
-	// Konfigurasi CORS
-	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:     []string{"http://localhost:5173"},
-		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
-		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
-		ExposeHeaders:    []string{echo.HeaderContentLength},
-		AllowCredentials: true,
-	}))
+	// Middleware
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+	e.Use(middleware.CORS())
 
 	// Health check endpoint
 	e.GET("/health", func(c echo.Context) error {
@@ -102,42 +91,48 @@ func main() {
 		})
 	})
 	
-	// Setup user handler menggunakan DI container
-	fmt.Println("Setting up user handler...")
-	userService := manager.Services().GetUserService()
-	if userService == nil {
-		log.Fatal("Failed to get user service from DI container")
-	}
-	fmt.Println("User service retrieved successfully")
-	
-	userHandler := userHttp.NewUserHandler(userService)
-	fmt.Println("User handler created successfully")
-	
-	// Register user routes
-	fmt.Println("Registering user routes...")
+	// Initialize handlers
+	userHandler := userHttp.NewUserHandler(service.UserUseCase)
+	tenantHandler := tenantHttp.NewTenantHandler(service.TenantUseCase)
+	messageHandler := messageHttp.NewMessageHandler(service.MessageUseCase)
+
+	// Register routes
 	userHttp.RegisterRoutes(e, userHandler)
-	fmt.Println("User routes registered successfully")
-
-	// Setup tenant handler
-	fmt.Println("Setting up tenant handler...")
-	tenantService := manager.Services().GetTenantService()
-	if tenantService == nil {
-		log.Fatal("Failed to get tenant service from DI container")
-	}
-	fmt.Println("Tenant service retrieved successfully")
-
-	tenantHandler := tenantHttp.NewTenantHandler(tenantService)
-	fmt.Println("Tenant handler created successfully")
-
-	// Register tenant routes
-	fmt.Println("Registering tenant routes...")
 	tenantHttp.RegisterRoutes(e, tenantHandler)
-	fmt.Println("Tenant routes registered successfully")
+	messageHandler.RegisterRoutes(e)
 
-	// Jalankan server
-	serverAddr := fmt.Sprintf(":%d", cfg.Server.Port)
-	fmt.Printf("Starting server on %s...\n", serverAddr)
-	if err := e.Start(serverAddr); err != nil {
-		log.Fatal("Failed to start server:", err)
+	// Start server in a goroutine
+	go func() {
+		fmt.Printf("Server configuration - Port: %d\n", cfg.Server.Port)
+		fmt.Printf("Starting server on port: %d\n", cfg.Server.Port)
+		if err := e.Start(fmt.Sprintf(":%d", cfg.Server.Port)); err != nil && err != http.ErrServerClosed {
+			log.Printf("Failed to start server: %v", err)
+			if closeErr := service.Close(); closeErr != nil {
+				log.Printf("Failed to close service after server error: %v", closeErr)
+			}
+			os.Exit(1)
+		}
+	}()
+
+	// Wait for interrupt signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	// Graceful shutdown
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+
+	// Shutdown server
+	if err := e.Shutdown(shutdownCtx); err != nil {
+		log.Printf("Failed to shutdown server: %v", err)
 	}
+
+	// Close service
+	if err := service.Close(); err != nil {
+		log.Printf("Failed to close service: %v", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Server shutdown complete")
 } 

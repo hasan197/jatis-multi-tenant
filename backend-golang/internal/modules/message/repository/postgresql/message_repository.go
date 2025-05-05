@@ -7,29 +7,45 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/pgconn"
 	"sample-stack-golang/internal/modules/message/domain"
 )
 
+// DBConn adalah interface untuk koneksi database
+type DBConn interface {
+	Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row
+	Begin(ctx context.Context) (pgx.Tx, error)
+}
+
 // MessageRepository implements domain.MessageRepository
 type MessageRepository struct {
-	db *pgx.Conn
+	db DBConn
 }
 
 // NewMessageRepository creates a new message repository
-func NewMessageRepository(db *pgx.Conn) *MessageRepository {
+func NewMessageRepository(pool *pgxpool.Pool) domain.MessageRepository {
 	return &MessageRepository{
-		db: db,
+		db: pool,
 	}
 }
 
 // Create creates a new message
 func (r *MessageRepository) Create(ctx context.Context, message *domain.Message) error {
+	// Buat partisi terlebih dahulu
+	_, err := r.db.Exec(ctx, "SELECT ensure_messages_partition($1)", message.TenantID)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		INSERT INTO messages (id, tenant_id, payload, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5)
 	`
 
-	_, err := r.db.Exec(ctx, query,
+	_, err = r.db.Exec(ctx, query,
 		message.ID,
 		message.TenantID,
 		message.Payload,
@@ -40,8 +56,8 @@ func (r *MessageRepository) Create(ctx context.Context, message *domain.Message)
 	return err
 }
 
-// GetByID gets a message by ID
-func (r *MessageRepository) GetByID(ctx context.Context, tenantID, messageID uuid.UUID) (*domain.Message, error) {
+// FindByID gets a message by ID
+func (r *MessageRepository) FindByID(ctx context.Context, tenantID, messageID uuid.UUID) (*domain.Message, error) {
 	query := `
 		SELECT id, tenant_id, payload, created_at, updated_at
 		FROM messages
@@ -57,7 +73,7 @@ func (r *MessageRepository) GetByID(ctx context.Context, tenantID, messageID uui
 		&message.UpdatedAt,
 	)
 
-	if err == pgx.ErrNoRows {
+	if err == sql.ErrNoRows {
 		return nil, sql.ErrNoRows
 	}
 
@@ -68,8 +84,8 @@ func (r *MessageRepository) GetByID(ctx context.Context, tenantID, messageID uui
 	return &message, nil
 }
 
-// GetByTenant gets messages by tenant ID
-func (r *MessageRepository) GetByTenant(ctx context.Context, filter domain.MessageFilter) ([]*domain.Message, string, error) {
+// FindByTenant gets messages by tenant ID
+func (r *MessageRepository) FindByTenant(ctx context.Context, filter domain.MessageFilter) ([]*domain.Message, string, error) {
 	query := `
 		SELECT id, tenant_id, payload, created_at, updated_at
 		FROM messages
@@ -169,14 +185,18 @@ func (r *MessageRepository) Delete(ctx context.Context, tenantID, messageID uuid
 }
 
 // WithTransaction executes a function within a transaction
-func (r *MessageRepository) WithTransaction(ctx context.Context, fn func(ctx context.Context) error) error {
+func (r *MessageRepository) WithTransaction(ctx context.Context, fn func(domain.MessageRepository) error) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
 
-	if err := fn(ctx); err != nil {
+	// Buat repository baru dengan transaksi
+	txRepo := &MessageRepository{db: tx}
+
+	// Jalankan fungsi dengan repository transaksi
+	if err := fn(txRepo); err != nil {
 		return err
 	}
 

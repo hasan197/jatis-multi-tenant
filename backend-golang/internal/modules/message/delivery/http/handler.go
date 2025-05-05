@@ -23,10 +23,17 @@ func NewMessageHandler(messageUsecase *usecase.MessageUsecase) *MessageHandler {
 
 // Create handles message creation
 func (h *MessageHandler) Create(c echo.Context) error {
+	tenantID, err := uuid.Parse(c.Param("tenant_id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid tenant ID"})
+	}
+
 	var message domain.Message
 	if err := c.Bind(&message); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
+
+	message.TenantID = tenantID
 
 	if err := h.messageUsecase.Create(c.Request().Context(), &message); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})

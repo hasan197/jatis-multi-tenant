@@ -29,9 +29,9 @@ func NewMessageRepository(db *sql.DB) model.MessageRepository {
 // Create menyimpan pesan baru
 func (r *messageRepository) Create(message *model.Message) error {
 	// Buat partisi terlebih dahulu
-	_, err := r.db.Exec("SELECT create_messages_partition($1)", message.TenantID)
+	_, err := r.db.Exec("SELECT ensure_messages_partition()")
 	if err != nil {
-		return fmt.Errorf("failed to create partition: %v", err)
+		return fmt.Errorf("failed to ensure partition: %v", err)
 	}
 
 	query := `

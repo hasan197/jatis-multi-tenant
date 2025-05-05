@@ -2,6 +2,7 @@ package fixtures
 
 import (
 	"time"
+	"sample-stack-golang/internal/config"
 )
 
 // TestUser represents a test user fixture
@@ -30,18 +31,34 @@ func GetTestUsers() []TestUser {
 	}
 }
 
-// TestConfig represents test configuration
-type TestConfig struct {
-	DatabaseURL string
-	APIPort     int
-	Environment string
-}
-
-// GetTestConfig returns test configuration
-func GetTestConfig() TestConfig {
-	return TestConfig{
-		DatabaseURL: "postgres://test:test@localhost:5432/testdb",
-		APIPort:     8080,
-		Environment: "test",
+// TestConfig returns a test configuration
+func TestConfig() *config.Config {
+	return &config.Config{
+		DB: config.DBConfig{
+			Host:     "localhost",
+			Port:     5432,
+			User:     "test",
+			Password: "test",
+			Name:     "testdb",
+		},
+		Redis: config.RedisConfig{
+			Host:     "localhost",
+			Port:     6379,
+			Password: "",
+			DB:       0,
+		},
+		RabbitMQ: config.RabbitMQConfig{
+			Host:     "localhost",
+			Port:     5672,
+			User:     "guest",
+			Password: "guest",
+		},
+		Server: config.ServerConfig{
+			Port: 8080,
+		},
+		App: config.AppConfig{
+			Version: "test",
+			Env:     "test",
+		},
 	}
 } 
