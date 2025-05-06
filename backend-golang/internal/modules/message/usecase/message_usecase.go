@@ -49,6 +49,11 @@ func (u *MessageUsecase) Delete(ctx context.Context, tenantID, messageID uuid.UU
 	return u.messageRepo.Delete(ctx, tenantID, messageID)
 }
 
+// GetMessages gets all messages across all tenants with cursor pagination
+func (u *MessageUsecase) GetMessages(ctx context.Context, cursor string, limit int) ([]*domain.Message, string, error) {
+	return u.messageRepo.FindAll(ctx, cursor, limit)
+}
+
 // WithTransaction executes a function within a transaction
 func (u *MessageUsecase) WithTransaction(ctx context.Context, fn func(*MessageUsecase) error) error {
 	return u.messageRepo.WithTransaction(ctx, func(repo domain.MessageRepository) error {

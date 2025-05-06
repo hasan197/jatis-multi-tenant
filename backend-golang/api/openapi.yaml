@@ -326,6 +326,50 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
           
+  /messages:
+    get:
+      tags:
+        - messages
+      summary: List all messages with cursor pagination
+      description: Returns paginated messages across all tenants
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          description: Cursor for pagination (ID of the last message in previous page)
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of messages to return (default 10, max 100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+                  next_cursor:
+                    type: string
+                    description: Cursor for the next page of results
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
   /tenants/{tenant_id}/messages/{id}:
     get:
       tags:

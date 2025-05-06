@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"time"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -132,6 +133,58 @@ func (r *MessageRepository) FindByTenant(ctx context.Context, filter domain.Mess
 	if len(messages) > filter.Limit {
 		nextCursor = messages[filter.Limit-1].ID.String()
 		messages = messages[:filter.Limit]
+	}
+
+	return messages, nextCursor, nil
+}
+
+// FindAll gets all messages across all tenants with cursor pagination
+func (r *MessageRepository) FindAll(ctx context.Context, cursor string, limit int) ([]*domain.Message, string, error) {
+	query := `
+		SELECT id, tenant_id, payload, created_at, updated_at
+		FROM messages
+	`
+
+	args := []interface{}{}
+
+	if cursor != "" {
+		query += " WHERE id > $1"
+		args = append(args, cursor)
+	}
+
+	query += " ORDER BY id ASC LIMIT $" + strconv.Itoa(len(args)+1)
+	args = append(args, limit+1)
+
+	rows, err := r.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, "", err
+	}
+	defer rows.Close()
+
+	var messages []*domain.Message
+	for rows.Next() {
+		var message domain.Message
+		err := rows.Scan(
+			&message.ID,
+			&message.TenantID,
+			&message.Payload,
+			&message.CreatedAt,
+			&message.UpdatedAt,
+		)
+		if err != nil {
+			return nil, "", err
+		}
+		messages = append(messages, &message)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, "", err
+	}
+
+	var nextCursor string
+	if len(messages) > limit {
+		nextCursor = messages[limit-1].ID.String()
+		messages = messages[:limit]
 	}
 
 	return messages, nextCursor, nil

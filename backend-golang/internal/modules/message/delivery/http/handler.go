@@ -2,6 +2,7 @@ package http
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -69,10 +70,16 @@ func (h *MessageHandler) GetByTenant(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid tenant ID"})
 	}
 
+	// Parse limit from query param, default to 10 if not provided or invalid
+	limit, err := strconv.Atoi(c.QueryParam("limit"))
+	if err != nil || limit <= 0 || limit > 100 {
+		limit = 10 // default limit
+	}
+
 	filter := domain.MessageFilter{
 		TenantID: tenantID,
 		Cursor:   c.QueryParam("cursor"),
-		Limit:    10, // default limit
+		Limit:    limit,
 	}
 
 	messages, nextCursor, err := h.messageUsecase.GetByTenant(c.Request().Context(), filter)
@@ -81,7 +88,31 @@ func (h *MessageHandler) GetByTenant(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
-		"messages":    messages,
+		"data":        messages,
+		"next_cursor": nextCursor,
+	})
+}
+
+// GetMessages handles global message retrieval with cursor pagination
+func (h *MessageHandler) GetMessages(c echo.Context) error {
+	// Parse limit from query param, default to 10 if not provided or invalid
+	limit, err := strconv.Atoi(c.QueryParam("limit"))
+	if err != nil || limit <= 0 || limit > 100 {
+		limit = 10 // default limit
+	}
+
+	// Get cursor from query param
+	cursor := c.QueryParam("cursor")
+
+	// Get messages from all tenants with pagination
+	messages, nextCursor, err := h.messageUsecase.GetMessages(c.Request().Context(), cursor, limit)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	// Return response in the format specified by the task
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"data":        messages,
 		"next_cursor": nextCursor,
 	})
 }

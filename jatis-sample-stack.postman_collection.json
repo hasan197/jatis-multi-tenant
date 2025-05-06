@@ -365,6 +365,38 @@
 					}
 				},
 				{
+					"name": "Get Messages with Cursor Pagination",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8080/api/messages?cursor=&limit=10",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"messages"
+							],
+							"query": [
+								{
+									"key": "cursor",
+									"value": "",
+									"description": "Cursor for pagination (ID of the last message in previous page)"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Maximum number of messages to return (default 10, max 100)"
+								}
+							]
+						},
+						"description": "Get paginated messages across all tenants using cursor pagination"
+					}
+				},
+				{
 					"name": "Get Messages by Tenant",
 					"request": {
 						"method": "GET",

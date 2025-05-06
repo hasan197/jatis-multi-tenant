@@ -59,8 +59,9 @@ nerdctl exec -it jatis-sample-stack-golang-rabbitmq-1 rabbitmqctl list_consumers
 
 > nerdctl exec -it jatis-sample-stack-golang-postgres-1 psql -U postgres -d sample_db -c "SELECT id, name, workers FROM tenants WHERE id = '2916830d-8ae9-479f-a5af-5f36cda831de';"
 
-> 
+> nerdctl logs --tail 50 jatis-sample-stack-golang-backend-golang-1 |grep "\"Started consumer with worker pool\",\"tenant_id\":\"c383e35c-e199-4ff4-8958-653fbafc9dbc\""
 
+> nerdctl logs --tail 50 jatis-sample-stack-golang-backend-golang-1 |grep "\"Starting worker\",\"tenant_id\":\"c383e35c-e199-4ff4-8958-653fbafc9dbc\""
 
 ### 5. Graceful Shutdown
 - **Implementation**:

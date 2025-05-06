@@ -29,7 +29,18 @@ type MessageRepository interface {
 	Create(ctx context.Context, message *Message) error
 	FindByID(ctx context.Context, tenantID, messageID uuid.UUID) (*Message, error)
 	FindByTenant(ctx context.Context, filter MessageFilter) ([]*Message, string, error)
+	FindAll(ctx context.Context, cursor string, limit int) ([]*Message, string, error)
 	Update(ctx context.Context, message *Message) error
 	Delete(ctx context.Context, tenantID, messageID uuid.UUID) error
 	WithTransaction(ctx context.Context, fn func(MessageRepository) error) error
+}
+
+// MessageUseCase defines the interface for message business logic
+type MessageUseCase interface {
+	Create(ctx context.Context, message *Message) error
+	GetByID(ctx context.Context, tenantID, messageID uuid.UUID) (*Message, error)
+	GetByTenant(ctx context.Context, filter MessageFilter) ([]*Message, string, error)
+	GetMessages(ctx context.Context, cursor string, limit int) ([]*Message, string, error)
+	Update(ctx context.Context, message *Message) error
+	Delete(ctx context.Context, tenantID, messageID uuid.UUID) error
 } 
