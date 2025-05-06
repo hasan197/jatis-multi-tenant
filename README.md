@@ -100,6 +100,9 @@ nerdctl exec -it jatis-sample-stack-golang-backend-golang-1go test ./...
 
 # Menjalankan go build
 nerdctl exec -it jatis-sample-stack-golang-backend-golang-1 go build
+
+# Menjalankan go build dengan flag -buildvcs=false (untuk menghindari masalah dengan git)
+nerdctl exec jatis-sample-stack-golang-backend-golang-1 sh -c "cd /app && go build -buildvcs=false -v ./..."
 ```
 
 ### Menjalankan Perintah di Container Lainnya

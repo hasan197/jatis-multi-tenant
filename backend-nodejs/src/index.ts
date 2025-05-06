@@ -137,12 +137,8 @@ app.post('/api/tenants/:tenantId/publish', async (req, res) => {
     // Format queue name sesuai dengan format yang digunakan di backend Go
     const queueName = `tenant.${tenantId}`;
     
-    // Ensure queue exists
-    await channel.assertQueue(queueName, {
-      durable: true
-    });
-
-    // Publish message
+    // Langsung kirim pesan tanpa mendeklarasikan queue
+    // Queue sudah dideklarasikan oleh backend Go dengan konfigurasi DLQ
     channel.sendToQueue(queueName, Buffer.from(JSON.stringify(payload)), {
       persistent: true
     });

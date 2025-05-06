@@ -1,6 +1,7 @@
 package migration
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -22,6 +23,8 @@ type Migration struct {
 	Up      string
 	Down    string
 }
+
+var migrations []*Migration
 
 // RunMigrations menjalankan migrasi database
 func RunMigrations(cfg *config.Config) error {
@@ -254,13 +257,13 @@ func getMigrationFiles(dir string) ([]*Migration, error) {
 			}
 
 			// Split content into up and down migrations
-			parts := strings.Split(string(content), "-- +migrate Down")
-			if len(parts) != 2 {
+			contentParts := strings.Split(string(content), "-- +migrate Down")
+			if len(contentParts) != 2 {
 				continue
 			}
 
-			up := strings.TrimPrefix(parts[0], "-- +migrate Up\n")
-			down := strings.TrimSpace(parts[1])
+			up := strings.TrimPrefix(contentParts[0], "-- +migrate Up\n")
+			down := strings.TrimSpace(contentParts[1])
 
 			migrations = append(migrations, &Migration{
 				Version: version,

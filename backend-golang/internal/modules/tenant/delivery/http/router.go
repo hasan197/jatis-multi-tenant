@@ -17,6 +17,8 @@ func RegisterRoutes(e *echo.Echo, h *TenantHandler) {
 	// RabbitMQ Publisher endpoints
 	tenants.POST("/:id/publish", h.PublishMessage)      // Endpoint for publishing messages to RabbitMQ
 	tenants.GET("/:id/queue-status", h.GetQueueStatus) // Endpoint for getting queue status
+	tenants.GET("/:id/dlq-status", h.GetDLQStatus)     // Endpoint for getting dead-letter queue status
+	tenants.POST("/:id/activate", h.ActivateConsumer)  // Endpoint for activating consumer
 	
 	// tenants.POST("", h.Create)
 	tenants.GET("", h.List)
