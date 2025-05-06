@@ -9,16 +9,18 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/streadway/amqp"
 	"sample-stack-golang/internal/modules/tenant/domain"
+	"sample-stack-golang/pkg/graceful"
 	"sample-stack-golang/pkg/logger"
 )
 
 // TenantManager mengimplementasikan domain.TenantManager untuk RabbitMQ
 type TenantManager struct {
-	rabbitConn *amqp.Connection
-	consumers  map[string]*domain.TenantConsumer
-	mu         sync.RWMutex
-	stopChan   chan struct{}
-	db         *pgxpool.Pool
+	rabbitConn     *amqp.Connection
+	consumers      map[string]*domain.TenantConsumer
+	mu             sync.RWMutex
+	stopChan       chan struct{}
+	db             *pgxpool.Pool
+	shutdownManager *graceful.ShutdownManager
 }
 
 // NewTenantManager membuat instance baru dari TenantManager
@@ -29,6 +31,11 @@ func NewTenantManager(rabbitConn *amqp.Connection, db *pgxpool.Pool) domain.Tena
 		stopChan:   make(chan struct{}),
 		db:         db,
 	}
+}
+
+// SetShutdownManager sets the shutdown manager for graceful shutdown
+func (m *TenantManager) SetShutdownManager(sm *graceful.ShutdownManager) {
+	m.shutdownManager = sm
 }
 
 // Start memulai tenant manager
@@ -157,6 +164,10 @@ func (m *TenantManager) StartConsumer(ctx context.Context, tenantID string) erro
 	// Start worker pool
 	for i := 0; i < workerCount; i++ {
 		workerID := i
+		// Add to waitgroup if shutdown manager is available
+		if m.shutdownManager != nil {
+			m.shutdownManager.AddTask()
+		}
 		go m.startWorker(consumer, workerID)
 	}
 
@@ -511,6 +522,12 @@ func (m *TenantManager) UpdateHeartbeat(tenantID string) {
 
 // forwardMessages meneruskan pesan dari RabbitMQ ke message channel untuk diproses oleh worker pool
 func (m *TenantManager) forwardMessages(consumer *domain.TenantConsumer, msgs <-chan amqp.Delivery) {
+	// Add to waitgroup if shutdown manager is available
+	if m.shutdownManager != nil {
+		m.shutdownManager.AddTask()
+		defer m.shutdownManager.DoneTask()
+	}
+
 	logger.Log.WithField("tenant_id", consumer.TenantID).Info("Starting message forwarder")
 	for {
 		select {
@@ -518,13 +535,16 @@ func (m *TenantManager) forwardMessages(consumer *domain.TenantConsumer, msgs <-
 			logger.Log.WithField("tenant_id", consumer.TenantID).Info("Stopping message forwarder")
 			close(consumer.MessageChan) // Close message channel to signal workers to stop
 			return
+		case <-m.stopChan:
+			logger.Log.WithField("tenant_id", consumer.TenantID).Info("Stopping message forwarder (manager stop)")
+			close(consumer.MessageChan) // Close message channel to signal workers to stop
+			return
 		case msg, ok := <-msgs:
 			if !ok {
-				consumer.ErrorChannel <- fmt.Errorf("message channel closed")
+				logger.Log.WithField("tenant_id", consumer.TenantID).Info("RabbitMQ channel closed, stopping forwarder")
+				close(consumer.MessageChan) // Close message channel to signal workers to stop
 				return
 			}
-
-			// Forward message to worker pool
 			consumer.MessageChan <- msg
 		}
 	}
@@ -532,6 +552,11 @@ func (m *TenantManager) forwardMessages(consumer *domain.TenantConsumer, msgs <-
 
 // startWorker memulai worker untuk memproses pesan dari message channel
 func (m *TenantManager) startWorker(consumer *domain.TenantConsumer, workerID int) {
+	// Mark worker as done in waitgroup when finished if shutdown manager is available
+	if m.shutdownManager != nil {
+		defer m.shutdownManager.DoneTask()
+	}
+
 	logger.Log.WithFields(map[string]interface{}{
 		"tenant_id": consumer.TenantID,
 		"worker_id": workerID,
@@ -543,7 +568,13 @@ func (m *TenantManager) startWorker(consumer *domain.TenantConsumer, workerID in
 			logger.Log.WithFields(map[string]interface{}{
 				"tenant_id": consumer.TenantID,
 				"worker_id": workerID,
-			}).Info("Stopping worker")
+			}).Info("Worker received stop signal")
+			return
+		case <-m.stopChan:
+			logger.Log.WithFields(map[string]interface{}{
+				"tenant_id": consumer.TenantID,
+				"worker_id": workerID,
+			}).Info("Worker received manager stop signal")
 			return
 		case msg, ok := <-consumer.MessageChan:
 			if !ok {
@@ -559,31 +590,28 @@ func (m *TenantManager) startWorker(consumer *domain.TenantConsumer, workerID in
 			logger.Log.WithFields(map[string]interface{}{
 				"tenant_id": consumer.TenantID,
 				"worker_id": workerID,
-				"message":   string(msg.Body),
-			}).Info("Processing message")
+				"message_id": msg.MessageId,
+			}).Debug("Processing message")
 
-			// Acknowledge message after processing
-			msg.Ack(false)
-		}
-	}
-}
+			// TODO: Implementasi pemrosesan pesan yang sebenarnya
+			// Di sini seharusnya ada kode untuk:
+			// 1. Parsing body pesan (msg.Body)
+			// 2. Validasi data
+			// 3. Menyimpan ke database atau memproses sesuai kebutuhan bisnis
+			// 4. Menangani error dengan tepat
 
-// processMessages memproses pesan untuk consumer
-func (m *TenantManager) processMessages(consumer *domain.TenantConsumer, msgs <-chan amqp.Delivery) {
-	for {
-		select {
-		case <-consumer.StopChannel:
-			return
-		case msg, ok := <-msgs:
-			if !ok {
-				return
+			// Saat ini hanya simulasi pemrosesan dengan delay
+			time.Sleep(100 * time.Millisecond)
+
+			// Acknowledge message
+			if err := msg.Ack(false); err != nil {
+				logger.Log.WithFields(map[string]interface{}{
+					"tenant_id": consumer.TenantID,
+					"worker_id": workerID,
+					"message_id": msg.MessageId,
+					"error":     err,
+				}).Error("Failed to acknowledge message")
 			}
-			// Process message
-			logger.Log.WithFields(map[string]interface{}{
-				"tenant_id": consumer.TenantID,
-				"message": string(msg.Body),
-			}).Info("Processing message for tenant")
-			msg.Ack(false)
 		}
 	}
 }
@@ -640,4 +668,9 @@ func (m *TenantManager) restartConsumer(ctx context.Context, tenantID string) er
 
 	// Start new consumer
 	return m.StartConsumer(ctx, tenantID)
+}
+
+// GetChannel gets a new channel from RabbitMQ connection
+func (m *TenantManager) GetChannel() (*amqp.Channel, error) {
+	return m.rabbitConn.Channel()
 } 

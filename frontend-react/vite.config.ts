@@ -13,9 +13,9 @@ export default defineConfig({
     host: true,
     port: 5173,
     proxy: {
-      // Proxy semua permintaan /api ke server Node.js
+      // Proxy semua permintaan /api ke server Go
       '/api': {
-        target: 'http://backend-nodejs:3000',
+        target: 'http://localhost:8080',
         changeOrigin: true,
         secure: false
       }

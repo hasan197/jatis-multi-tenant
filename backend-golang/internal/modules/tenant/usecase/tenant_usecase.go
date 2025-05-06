@@ -7,6 +7,7 @@ import (
 
 	"sample-stack-golang/internal/modules/tenant/domain"
 	"sample-stack-golang/pkg/logger"
+	"github.com/streadway/amqp"
 )
 
 var (
@@ -191,4 +192,20 @@ func (u *TenantUseCase) stopConsumer(consumer *domain.TenantConsumer) error {
 		close(consumer.StopChannel)
 	}
 	return nil
+}
+
+// GetChannel gets a new channel from RabbitMQ connection
+func (u *TenantUseCase) GetChannel() (*amqp.Channel, error) {
+	if u.manager == nil {
+		return nil, fmt.Errorf("tenant manager not initialized")
+	}
+	return u.manager.GetChannel()
+}
+
+// GetConsumer gets a consumer for a tenant
+func (u *TenantUseCase) GetConsumer(tenantID string) *domain.TenantConsumer {
+	if u.manager == nil {
+		return nil
+	}
+	return u.manager.GetConsumer(tenantID)
 }

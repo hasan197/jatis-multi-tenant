@@ -19,6 +19,10 @@ curl -X POST http://localhost:8080/api/tenants -H "Content-Type: application/jso
 
 nerdctl exec -it jatis-sample-stack-golang-postgres-1 psql -U postgres -d sample_db -c "SELECT tablename FROM pg_tables WHERE tablename LIKE 'messages_%';"
 
+nerdctl exec -it jatis-sample-stack-golang-rabbitmq-1 rabbitmqctl list_channels
+nerdctl exec -it jatis-sample-stack-golang-rabbitmq-1 rabbitmqctl list_consumers
+
+
 ### 2. Auto-Stop Tenant Consumer
 - **Implementation**:
     - On `DELETE /tenants/{id}`:
@@ -55,7 +59,7 @@ nerdctl exec -it jatis-sample-stack-golang-rabbitmq-1 rabbitmqctl list_consumers
 
 > nerdctl exec -it jatis-sample-stack-golang-postgres-1 psql -U postgres -d sample_db -c "SELECT id, name, workers FROM tenants WHERE id = '2916830d-8ae9-479f-a5af-5f36cda831de';"
 
-> nerdctl logs jatis-sample-stack-golang-backend-golang-1 | grep "2916830d-8ae9-479f-a5af-5f36cda831de" | grep -i worker | tail -10
+> 
 
 
 ### 5. Graceful Shutdown

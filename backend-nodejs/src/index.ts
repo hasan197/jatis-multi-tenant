@@ -35,17 +35,83 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
 // RabbitMQ connection
 let channel: amqp.Channel | null = null;
+let connection: amqp.Connection | null = null;
+let isConnecting = false;
+let retryCount = 0;
+const maxRetries = 10;
+const retryInterval = 3000; // 3 seconds
 
 const connectToRabbitMQ = async () => {
+  if (isConnecting) return;
+  isConnecting = true;
+  
   try {
-    const connection = await amqp.connect('amqp://guest:guest@rabbitmq:5672');
+    logger.info('Connecting to RabbitMQ...');
+    connection = await amqp.connect('amqp://guest:guest@rabbitmq:5672');
+    
+    // Handle connection close/error
+    connection.on('error', (err: Error) => {
+      logger.error('RabbitMQ connection error:', err);
+      reconnect();
+    });
+    
+    connection.on('close', () => {
+      logger.warn('RabbitMQ connection closed, attempting to reconnect...');
+      reconnect();
+    });
+    
+    // Create channel
     channel = await connection.createChannel();
-    logger.info('Connected to RabbitMQ');
+    
+    // Handle channel close/error
+    channel.on('error', (err: Error) => {
+      logger.error('RabbitMQ channel error:', err);
+      channel = null;
+      reconnect();
+    });
+    
+    channel.on('close', () => {
+      logger.warn('RabbitMQ channel closed');
+      channel = null;
+      reconnect();
+    });
+    
+    // Reset retry count on successful connection
+    retryCount = 0;
+    logger.info('Successfully connected to RabbitMQ');
   } catch (error) {
     logger.error('Failed to connect to RabbitMQ:', error);
+    reconnect();
+  } finally {
+    isConnecting = false;
   }
 };
 
+const reconnect = () => {
+  if (retryCount >= maxRetries) {
+    logger.error(`Failed to connect to RabbitMQ after ${maxRetries} attempts. Giving up.`);
+    return;
+  }
+  
+  // Close existing connections if any
+  if (channel) {
+    try { channel.close(); } catch (e) { /* ignore */ }
+    channel = null;
+  }
+  
+  if (connection) {
+    try { connection.close(); } catch (e) { /* ignore */ }
+    connection = null;
+  }
+  
+  retryCount++;
+  const delay = retryInterval * Math.min(retryCount, 10); // Exponential backoff capped at 30 seconds
+  
+  logger.info(`Attempting to reconnect to RabbitMQ in ${delay/1000} seconds... (Attempt ${retryCount}/${maxRetries})`);
+  setTimeout(connectToRabbitMQ, delay);
+};
+
+// Initial connection
 connectToRabbitMQ();
 
 // Endpoint yang ditangani Node.js
@@ -54,11 +120,22 @@ app.post('/api/tenants/:tenantId/publish', async (req, res) => {
     const { tenantId } = req.params;
     const payload = req.body;
 
+    // Jika channel tidak tersedia, coba reconnect dan tunggu
     if (!channel) {
-      throw new Error('RabbitMQ channel not initialized');
+      logger.warn('RabbitMQ channel not available, attempting to reconnect...');
+      await connectToRabbitMQ();
+      
+      // Tunggu sebentar untuk koneksi
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Periksa lagi setelah mencoba reconnect
+      if (!channel) {
+        throw new Error('RabbitMQ channel still not initialized after reconnect attempt');
+      }
     }
 
-    const queueName = `tenant_${tenantId}_queue`;
+    // Format queue name sesuai dengan format yang digunakan di backend Go
+    const queueName = `tenant.${tenantId}`;
     
     // Ensure queue exists
     await channel.assertQueue(queueName, {

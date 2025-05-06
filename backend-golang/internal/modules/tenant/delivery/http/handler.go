@@ -1,10 +1,13 @@
 package http
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/streadway/amqp"
 	"sample-stack-golang/internal/modules/tenant/domain"
 	"sample-stack-golang/pkg/logger"
 )
@@ -204,5 +207,98 @@ func (h *TenantHandler) UpdateConcurrency(c echo.Context) error {
 		"message": "Concurrency configuration updated successfully",
 		"tenant_id": id,
 		"workers": config.Workers,
+	})
+}
+
+// GetQueueStatus handles getting queue status for a tenant
+func (h *TenantHandler) GetQueueStatus(c echo.Context) error {
+	tenantID := c.Param("id")
+	if tenantID == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "tenant ID is required"})
+	}
+
+	// Get consumer from manager
+	consumer := h.tenantUseCase.GetConsumer(tenantID)
+
+	// Get channel from RabbitMQ
+	ch, err := h.tenantUseCase.GetChannel()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to get channel"})
+	}
+	defer ch.Close()
+
+	queueName := fmt.Sprintf("tenant.%s", tenantID)
+	queue, err := ch.QueueInspect(queueName)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to inspect queue"})
+	}
+
+	// Set default values
+	status := "inactive"
+	workers := 0
+
+	// Update with actual values if consumer exists
+	if consumer != nil {
+		status = "active"
+		workers = int(consumer.WorkerCount.Load())
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"status":         status,
+		"workers":        workers,
+		"messageCount":   queue.Messages,
+		"consumerCount":  queue.Consumers,
+		"processingRate": "N/A", // TODO: Implement processing rate calculation
+	})
+}
+
+// PublishMessage handles publishing a message to RabbitMQ for a tenant
+func (h *TenantHandler) PublishMessage(c echo.Context) error {
+	tenantID := c.Param("id")
+	if tenantID == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "tenant ID is required"})
+	}
+
+	// Parse request body
+	var message map[string]interface{}
+	if err := c.Bind(&message); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid message format"})
+	}
+
+	// Get channel from RabbitMQ
+	ch, err := h.tenantUseCase.GetChannel()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to get channel"})
+	}
+	defer ch.Close()
+
+	// Convert message to JSON
+	messageBytes, err := json.Marshal(message)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to marshal message"})
+	}
+
+	// Publish message to RabbitMQ
+	exchange := "" // Use default exchange
+	routingKey := fmt.Sprintf("tenant.%s", tenantID)
+
+	err = ch.Publish(
+		exchange,
+		routingKey,
+		false, // mandatory
+		false, // immediate
+		amqp.Publishing{
+			ContentType: "application/json",
+			Body:        messageBytes,
+		},
+	)
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to publish message"})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"message":   "Message published successfully",
+		"tenant_id": tenantID,
 	})
 }

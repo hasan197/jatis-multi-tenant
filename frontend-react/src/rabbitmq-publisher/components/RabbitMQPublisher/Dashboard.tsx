@@ -10,8 +10,8 @@ import {
   Typography,
   CircularProgress
 } from '@mui/material';
-import { useTenants } from '../../hooks/useTenants';
-import { useQueueStatus } from '../../hooks/useQueueStatus';
+import { useTenants } from '../../../hooks/useTenants';
+import { useQueueStatus } from '../../../hooks/useQueueStatus';
 
 interface DashboardProps {
   onTenantSelect: (tenantId: string) => void;

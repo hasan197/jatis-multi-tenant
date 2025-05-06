@@ -1,112 +1,58 @@
 import React, { useState } from 'react';
-import { 
-  Card, 
-  CardContent, 
-  Button, 
-  Box,
-  Alert,
-  Snackbar
-} from '@mui/material';
-import MonacoEditor from '@monaco-editor/react';
-import { usePublishMessage } from '../../hooks/usePublishMessage';
+import { Card, CardContent, Typography, Button, Box } from '@mui/material';
+import Editor from '@monaco-editor/react';
+import { usePublishMessage } from '../../../hooks/usePublishMessage';
 
 interface PublishFormProps {
   tenantId: string;
 }
 
 export const PublishForm: React.FC<PublishFormProps> = ({ tenantId }) => {
-  const [jsonPayload, setJsonPayload] = useState<string>('{\n  "message": "Hello World",\n  "priority": "high",\n  "metadata": {\n    "source": "web-ui"\n  }\n}');
-  const { publishMessage, loading } = usePublishMessage();
-  const [snackbar, setSnackbar] = useState<{
-    open: boolean;
-    message: string;
-    severity: 'success' | 'error';
-  }>({
-    open: false,
-    message: '',
-    severity: 'success'
-  });
-
-  const handleValidate = () => {
-    try {
-      JSON.parse(jsonPayload);
-      setSnackbar({
-        open: true,
-        message: 'JSON valid',
-        severity: 'success'
-      });
-    } catch (error) {
-      setSnackbar({
-        open: true,
-        message: 'Invalid JSON format',
-        severity: 'error'
-      });
-    }
-  };
+  const [message, setMessage] = useState('{\n  "message": "Hello World",\n  "priority": "high",\n  "metadata": {\n    "source": "web-ui"\n  }\n}');
+  const { publish, loading, error } = usePublishMessage();
 
   const handlePublish = async () => {
     try {
-      const payload = JSON.parse(jsonPayload);
-      await publishMessage(tenantId, payload);
-      setSnackbar({
-        open: true,
-        message: 'Message published successfully',
-        severity: 'success'
-      });
-    } catch (error) {
-      setSnackbar({
-        open: true,
-        message: 'Failed to publish message',
-        severity: 'error'
-      });
+      const jsonMessage = JSON.parse(message);
+      await publish(tenantId, jsonMessage);
+      setMessage('{\n  "message": "Hello World",\n  "priority": "high",\n  "metadata": {\n    "source": "web-ui"\n  }\n}');
+    } catch (err) {
+      console.error('Invalid JSON:', err);
     }
   };
 
   return (
     <Card sx={{ mt: 4 }}>
       <CardContent>
-        <Box sx={{ mb: 2 }}>
-          <MonacoEditor
-            height="300px"
-            language="json"
-            theme="vs-dark"
-            value={jsonPayload}
-            onChange={(value) => setJsonPayload(value || '')}
+        <Typography variant="h6" gutterBottom>
+          Publish Message
+        </Typography>
+        <Box sx={{ height: 300, mb: 2 }}>
+          <Editor
+            height="100%"
+            defaultLanguage="json"
+            value={message}
+            onChange={(value: string | undefined) => setMessage(value || '')}
             options={{
               minimap: { enabled: false },
               formatOnPaste: true,
-              formatOnType: true,
+              formatOnType: true
             }}
           />
         </Box>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button 
-            variant="outlined" 
-            onClick={handleValidate}
-          >
-            Validate JSON
-          </Button>
-          <Button 
-            variant="contained" 
-            onClick={handlePublish}
-            disabled={loading}
-          >
-            Publish Message
-          </Button>
-        </Box>
-      </CardContent>
-      <Snackbar 
-        open={snackbar.open} 
-        autoHideDuration={6000} 
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert 
-          onClose={() => setSnackbar({ ...snackbar, open: false })} 
-          severity={snackbar.severity}
+        {error && (
+          <Typography color="error" sx={{ mb: 2 }}>
+            {error}
+          </Typography>
+        )}
+        <Button
+          variant="contained"
+          onClick={handlePublish}
+          disabled={loading}
         >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+          {loading ? 'Publishing...' : 'Publish Message'}
+        </Button>
+      </CardContent>
     </Card>
   );
 }; 

@@ -1,13 +1,10 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -18,6 +15,7 @@ import (
 	"sample-stack-golang/internal/config"
 	"sample-stack-golang/internal/di"
 	"sample-stack-golang/pkg/infrastructure/metrics"
+	"sample-stack-golang/pkg/graceful"
 	userHttp "sample-stack-golang/internal/modules/user/delivery/http"
 	tenantHttp "sample-stack-golang/internal/modules/tenant/delivery/http"
 	messageHttp "sample-stack-golang/internal/modules/message/delivery/http"
@@ -67,10 +65,19 @@ func main() {
 	// Setup metrics
 	metrics.SetupMetrics(e)
 
+	// Create shutdown manager
+	shutdownManager := graceful.NewShutdownManager(e, service.Close)
+
+	// Set shutdown manager for tenant manager if available
+	if tenantManager, ok := service.TenantUseCase.(interface{ SetShutdownManager(*graceful.ShutdownManager) }); ok {
+		tenantManager.SetShutdownManager(shutdownManager)
+	}
+
 	// Middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORS())
+	e.Use(shutdownManager.WaitGroupMiddleware())
 
 	// Health check endpoint
 	e.GET("/health", func(c echo.Context) error {
@@ -114,25 +121,8 @@ func main() {
 		}
 	}()
 
-	// Wait for interrupt signal
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	// Graceful shutdown
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer shutdownCancel()
-
-	// Shutdown server
-	if err := e.Shutdown(shutdownCtx); err != nil {
-		log.Printf("Failed to shutdown server: %v", err)
-	}
-
-	// Close service
-	if err := service.Close(); err != nil {
-		log.Printf("Failed to close service: %v", err)
-		os.Exit(1)
-	}
+	// Wait for graceful shutdown (this handles everything: signal capture, server shutdown, waiting for active processes)
+	shutdownManager.WaitForShutdown()
 
 	fmt.Println("Server shutdown complete")
 } 
