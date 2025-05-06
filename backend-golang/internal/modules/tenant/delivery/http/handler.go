@@ -9,6 +9,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/streadway/amqp"
 	"sample-stack-golang/internal/modules/tenant/domain"
+	"sample-stack-golang/pkg/infrastructure/metrics"
 	"sample-stack-golang/pkg/logger"
 )
 
@@ -232,6 +233,9 @@ func (h *TenantHandler) GetQueueStatus(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to inspect queue"})
 	}
+	
+	// Update Prometheus metrics for queue depth and consumer count
+	metrics.UpdateQueueMetrics(tenantID, queueName, float64(queue.Messages), float64(queue.Consumers))
 
 	// Set default values
 	status := "inactive"

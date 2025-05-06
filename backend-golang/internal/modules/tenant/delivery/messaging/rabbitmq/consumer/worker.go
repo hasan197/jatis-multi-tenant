@@ -8,6 +8,7 @@ import (
 	"github.com/streadway/amqp"
 	"sample-stack-golang/internal/modules/tenant/domain"
 	"sample-stack-golang/pkg/graceful"
+	"sample-stack-golang/pkg/infrastructure/metrics"
 	"sample-stack-golang/pkg/logger"
 	"sample-stack-golang/pkg/rabbitmq"
 )
@@ -23,6 +24,9 @@ func StartWorker(consumer *domain.TenantConsumer, workerID int, shutdownManager 
 		"tenant_id": consumer.TenantID,
 		"worker_id": workerID,
 	}).Info("Starting worker")
+	
+	// Update worker count metric
+	metrics.UpdateWorkerCount(consumer.TenantID, float64(consumer.WorkerCount.Load()))
 
 	for {
 		select {
@@ -48,6 +52,9 @@ func StartWorker(consumer *domain.TenantConsumer, workerID int, shutdownManager 
 				"worker_id":  workerID,
 				"message_id": msg.MessageId,
 			}).Debug("Processing message")
+
+			// Mulai mengukur waktu pemrosesan pesan
+			startTime := time.Now()
 
 			// Simulasi pemrosesan dengan kemungkinan error
 			var processingError error
@@ -127,6 +134,11 @@ func StartWorker(consumer *domain.TenantConsumer, workerID int, shutdownManager 
 					"error":      processingError,
 				}).Error("Message processing failed, handling with DLQ mechanism")
 
+				// Record processing time and failed message metric
+				processingTime := time.Since(startTime).Seconds()
+				metrics.RecordMessageProcessingTime(consumer.TenantID, processingTime)
+				metrics.RecordMessageProcessed(consumer.TenantID, "failed")
+
 				// Gunakan package rabbitmq untuk menangani error pemrosesan pesan
 				err := rabbitmq.HandleMessageProcessingError(
 					msg,
@@ -150,15 +162,17 @@ func StartWorker(consumer *domain.TenantConsumer, workerID int, shutdownManager 
 						"worker_id":  workerID,
 						"message_id": msg.MessageId,
 					}).Info("Successfully handled message processing error with DLQ mechanism")
+					
+					// Record retry metric
+					metrics.RecordMessageRetry(consumer.TenantID)
 				}
 			} else {
-				// Jika pemrosesan berhasil, acknowledge message
-				logger.Log.WithFields(map[string]interface{}{
-					"tenant_id":  consumer.TenantID,
-					"worker_id":  workerID,
-					"message_id": msg.MessageId,
-				}).Debug("Message processed successfully, acknowledging")
+				// Record processing time and successful message metric
+				processingTime := time.Since(startTime).Seconds()
+				metrics.RecordMessageProcessingTime(consumer.TenantID, processingTime)
+				metrics.RecordMessageProcessed(consumer.TenantID, "success")
 
+				// Jika pemrosesan berhasil, acknowledge message
 				if err := msg.Ack(false); err != nil {
 					logger.Log.WithFields(map[string]interface{}{
 						"tenant_id":  consumer.TenantID,
@@ -171,7 +185,7 @@ func StartWorker(consumer *domain.TenantConsumer, workerID int, shutdownManager 
 						"tenant_id":  consumer.TenantID,
 						"worker_id":  workerID,
 						"message_id": msg.MessageId,
-					}).Debug("Message successfully acknowledged")
+					}).Debug("Message processed successfully, acknowledging")
 				}
 			}
 		}

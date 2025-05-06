@@ -44,6 +44,74 @@ var (
 		},
 		[]string{"query_type"},
 	)
+
+	// RabbitMQ metrics - Queue metrics
+	QueueDepth = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "rabbitmq_queue_depth",
+			Help: "The current number of messages in the queue",
+		},
+		[]string{"tenant_id", "queue_name"},
+	)
+
+	QueueConsumerCount = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "rabbitmq_queue_consumer_count",
+			Help: "The current number of consumers for the queue",
+		},
+		[]string{"tenant_id", "queue_name"},
+	)
+
+	// RabbitMQ metrics - Worker metrics
+	WorkerCount = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "rabbitmq_worker_count",
+			Help: "The current number of active workers",
+		},
+		[]string{"tenant_id"},
+	)
+
+	MessageProcessed = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "rabbitmq_messages_processed_total",
+			Help: "The total number of processed messages",
+		},
+		[]string{"tenant_id", "status"},
+	)
+
+	MessageProcessingTime = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "rabbitmq_message_processing_time_seconds",
+			Help:    "Time taken to process messages",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"tenant_id"},
+	)
+
+	// RabbitMQ metrics - DLQ metrics
+	DLQDepth = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "rabbitmq_dlq_depth",
+			Help: "The current number of messages in the dead letter queue",
+		},
+		[]string{"tenant_id"},
+	)
+
+	MessageRetryCount = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "rabbitmq_message_retry_total",
+			Help: "The total number of message retries",
+		},
+		[]string{"tenant_id"},
+	)
+
+	MessageDeadLettered = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "rabbitmq_messages_dead_lettered_total",
+			Help: "The total number of messages sent to dead letter queue",
+		},
+		[]string{"tenant_id"},
+	)
 )
 
 // SetupMetrics mengatur endpoint metrics dan middleware
@@ -80,4 +148,42 @@ func RecordDBQueryDuration(queryType string, duration float64) {
 // SetActiveUsers mengupdate jumlah user aktif
 func SetActiveUsers(count float64) {
 	activeUsers.Set(count)
+}
+
+// RabbitMQ Metrics Functions
+
+// RecordMessageProcessed increments the counter for processed messages
+func RecordMessageProcessed(tenantID, status string) {
+	MessageProcessed.WithLabelValues(tenantID, status).Inc()
+}
+
+// RecordMessageProcessingTime observes the time taken to process a message
+func RecordMessageProcessingTime(tenantID string, durationSeconds float64) {
+	MessageProcessingTime.WithLabelValues(tenantID).Observe(durationSeconds)
+}
+
+// UpdateQueueMetrics updates the queue depth and consumer count metrics
+func UpdateQueueMetrics(tenantID, queueName string, depth, consumerCount float64) {
+	QueueDepth.WithLabelValues(tenantID, queueName).Set(depth)
+	QueueConsumerCount.WithLabelValues(tenantID, queueName).Set(consumerCount)
+}
+
+// UpdateWorkerCount updates the worker count metric
+func UpdateWorkerCount(tenantID string, count float64) {
+	WorkerCount.WithLabelValues(tenantID).Set(count)
+}
+
+// UpdateDLQMetrics updates the DLQ depth metric
+func UpdateDLQMetrics(tenantID string, depth float64) {
+	DLQDepth.WithLabelValues(tenantID).Set(depth)
+}
+
+// RecordMessageRetry increments the counter for message retries
+func RecordMessageRetry(tenantID string) {
+	MessageRetryCount.WithLabelValues(tenantID).Inc()
+}
+
+// RecordMessageDeadLettered increments the counter for dead lettered messages
+func RecordMessageDeadLettered(tenantID string) {
+	MessageDeadLettered.WithLabelValues(tenantID).Inc()
 } 

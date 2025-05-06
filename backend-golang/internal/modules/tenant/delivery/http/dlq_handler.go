@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"sample-stack-golang/pkg/infrastructure/metrics"
 	"sample-stack-golang/pkg/logger"
 )
 
@@ -41,6 +42,9 @@ func (h *TenantHandler) GetDLQStatus(c echo.Context) error {
 		}).Warn("[DLQ] Failed to inspect DLQ, it may not exist yet")
 		
 		// DLQ mungkin belum ada, bukan error
+		// Update Prometheus metrics for DLQ with zero values
+		metrics.UpdateDLQMetrics(tenantID, 0)
+	
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"exists":        false,
 			"messageCount":  0,
@@ -53,7 +57,10 @@ func (h *TenantHandler) GetDLQStatus(c echo.Context) error {
 		"queue":         dlqName,
 		"message_count": dlq.Messages,
 		"consumer_count": dlq.Consumers,
-	}).Info("[DLQ] Successfully checked DLQ status")
+	}).Info("[DLQ] DLQ status checked")
+
+	// Update Prometheus metrics for DLQ
+	metrics.UpdateDLQMetrics(tenantID, float64(dlq.Messages))
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"exists":        true,

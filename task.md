@@ -68,6 +68,8 @@ nerdctl exec -it jatis-sample-stack-golang-rabbitmq-1 rabbitmqctl list_consumers
 ### 5. Graceful Shutdown
 - **Implementation**:
     - Application must process ongoing transaction before stop.
+  
+  ujicoba: docs/graceful-shutdown-test.md
 
 ### 6. Cursor Pagination API
 - **API Endpoint**:
@@ -78,6 +80,8 @@ nerdctl exec -it jatis-sample-stack-golang-rabbitmq-1 rabbitmqctl list_consumers
         "next_cursor": "456"
       }
     ```
+
+ujicoba: docs/cursor-pagination-test.md
   
 ### 7. Swagger Documentation
 - Generate OpenAPI spec with swag init.
@@ -110,5 +114,10 @@ nerdctl exec -it jatis-sample-stack-golang-rabbitmq-1 rabbitmqctl list_consumers
 
 ### Additional Considerations
 - Retry Logic: Dead-letter queues for failed messages
+  jalankan ./test-dlq.sh
+
 - Monitoring: Prometheus metrics for queue depth and worker activity
+  jalankan docker-compose -f backend-golang/docker-compose.monitoring.yml up -d
+  dokumentasi: docs/prometheus-metrics-guide.md
+
 - Security: JWT authentication for tenant-specific operations
