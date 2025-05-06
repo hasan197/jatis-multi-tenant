@@ -28,7 +28,7 @@ type TenantConsumer struct {
 	IsActive      bool           `json:"is_active"`
 	LastHeartbeat time.Time      `json:"last_heartbeat"`
 	ErrorChannel  chan error     `json:"-"`
-	WorkerCount   atomic.Int32   `json:"worker_count"`
+	WorkerCount   atomic.Int32   `json:"worker_count" swaggertype:"integer"`
 	MessageChan   chan amqp.Delivery `json:"-"`
 }
 

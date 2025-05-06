@@ -14,7 +14,7 @@ services:
       - ./backend-golang/configs:/app/configs:delegated
       - go-mod-cache:/go/pkg/mod
       - go-build-cache:/go/cache
-      - /app/.git
+      - ./backend-golang/docs:/app/docs:delegated
     depends_on:
       - postgres
       - redis

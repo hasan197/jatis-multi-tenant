@@ -26,6 +26,16 @@ func NewTenantHandler(tenantUseCase domain.TenantUseCase) *TenantHandler {
 }
 
 // Create handles tenant creation
+// @Summary Create a new tenant
+// @Description Create a new tenant in the system
+// @Tags tenants
+// @Accept json
+// @Produce json
+// @Param tenant body domain.Tenant true "Tenant Information"
+// @Success 201 {object} domain.Tenant
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /tenants [post]
 func (h *TenantHandler) Create(c echo.Context) error {
 	var tenant domain.Tenant
 	if err := c.Bind(&tenant); err != nil {
@@ -43,6 +53,15 @@ func (h *TenantHandler) Create(c echo.Context) error {
 }
 
 // GetByID handles getting a tenant by ID
+// @Summary Get tenant by ID
+// @Description Get a specific tenant by its ID
+// @Tags tenants
+// @Accept json
+// @Produce json
+// @Param id path string true "Tenant ID"
+// @Success 200 {object} domain.Tenant
+// @Failure 404 {object} map[string]string
+// @Router /tenants/{id} [get]
 func (h *TenantHandler) GetByID(c echo.Context) error {
 	id := c.Param("id")
 	tenant, err := h.tenantUseCase.GetByID(c.Request().Context(), id)
@@ -54,6 +73,17 @@ func (h *TenantHandler) GetByID(c echo.Context) error {
 }
 
 // Update handles tenant updates
+// @Summary Update a tenant
+// @Description Update an existing tenant's information
+// @Tags tenants
+// @Accept json
+// @Produce json
+// @Param id path string true "Tenant ID"
+// @Param tenant body domain.Tenant true "Updated Tenant Information"
+// @Success 200 {object} domain.Tenant
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /tenants/{id} [put]
 func (h *TenantHandler) Update(c echo.Context) error {
 	id := c.Param("id")
 	var tenant domain.Tenant
@@ -72,6 +102,15 @@ func (h *TenantHandler) Update(c echo.Context) error {
 }
 
 // Delete handles tenant deletion
+// @Summary Delete a tenant
+// @Description Delete a tenant from the system
+// @Tags tenants
+// @Accept json
+// @Produce json
+// @Param id path string true "Tenant ID"
+// @Success 204 "No Content"
+// @Failure 500 {object} map[string]string
+// @Router /tenants/{id} [delete]
 func (h *TenantHandler) Delete(c echo.Context) error {
 	id := c.Param("id")
 	if err := h.tenantUseCase.Delete(c.Request().Context(), id); err != nil {
@@ -82,6 +121,14 @@ func (h *TenantHandler) Delete(c echo.Context) error {
 }
 
 // List handles listing all tenants
+// @Summary List all tenants
+// @Description Get a list of all tenants in the system
+// @Tags tenants
+// @Accept json
+// @Produce json
+// @Success 200 {array} domain.Tenant
+// @Failure 500 {object} map[string]string
+// @Router /tenants [get]
 func (h *TenantHandler) List(c echo.Context) error {
 	tenants, err := h.tenantUseCase.List(c.Request().Context())
 	if err != nil {
@@ -92,6 +139,16 @@ func (h *TenantHandler) List(c echo.Context) error {
 }
 
 // CreateTenant handles tenant creation with consumer
+// @Summary Create tenant with consumer
+// @Description Create a new tenant and start its message consumer
+// @Tags tenants
+// @Accept json
+// @Produce json
+// @Param tenant body domain.Tenant true "Tenant Information"
+// @Success 201 {object} domain.Tenant
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /tenants/with-consumer [post]
 func (h *TenantHandler) CreateTenant(c echo.Context) error {
 	var tenant domain.Tenant
 	if err := c.Bind(&tenant); err != nil {
@@ -114,6 +171,16 @@ func (h *TenantHandler) CreateTenant(c echo.Context) error {
 }
 
 // DeleteTenant handles tenant deletion with consumer cleanup
+// @Summary Delete tenant with cleanup
+// @Description Delete a tenant and clean up its resources including consumer
+// @Tags tenants
+// @Accept json
+// @Produce json
+// @Param id path string true "Tenant ID"
+// @Success 204 "No Content"
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /tenants/{id}/with-cleanup [delete]
 func (h *TenantHandler) DeleteTenant(c echo.Context) error {
 	id := c.Param("id")
 	ctx := c.Request().Context()
@@ -151,6 +218,18 @@ func (h *TenantHandler) DeleteTenant(c echo.Context) error {
 }
 
 // GetTenantConsumers handles getting all tenant consumers
+// @Summary Get tenant consumers
+// @Description Get consumer information for a specific tenant or all tenants
+// @Tags tenants
+// @Accept json
+// @Produce json
+// @Param id path string false "Tenant ID"
+// @Success 200 {object} domain.TenantConsumer
+// @Success 200 {array} domain.TenantConsumer
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /tenants/{id}/consumers [get]
+// @Router /tenants/consumers [get]
 func (h *TenantHandler) GetTenantConsumers(c echo.Context) error {
 	// Get tenant ID from path parameter
 	tenantID := c.Param("id")
@@ -181,6 +260,17 @@ func (h *TenantHandler) GetTenantConsumers(c echo.Context) error {
 }
 
 // UpdateConcurrency handles updating tenant concurrency configuration
+// @Summary Update tenant concurrency
+// @Description Update the concurrency configuration for a tenant
+// @Tags tenants
+// @Accept json
+// @Produce json
+// @Param id path string true "Tenant ID"
+// @Param config body domain.ConcurrencyConfig true "Concurrency Configuration"
+// @Success 200 {object} domain.ConcurrencyConfig
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /tenants/{id}/concurrency [put]
 func (h *TenantHandler) UpdateConcurrency(c echo.Context) error {
 	// Get tenant ID from path parameter
 	id := c.Param("id")

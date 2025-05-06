@@ -12,7 +12,7 @@ import (
 type Message struct {
 	ID        uuid.UUID       `json:"id" db:"id"`
 	TenantID  uuid.UUID       `json:"tenant_id" db:"tenant_id"`
-	Payload   json.RawMessage `json:"payload" db:"payload"`
+	Payload   json.RawMessage `json:"payload" swaggertype:"string" example:"{\"key\":\"value\"}" db:"payload"`
 	CreatedAt time.Time       `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time       `json:"updated_at" db:"updated_at"`
 }

@@ -1,0 +1,758 @@
+basePath: /api
+definitions:
+  domain.ConcurrencyConfig:
+    properties:
+      workers:
+        type: integer
+    type: object
+  domain.Message:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      payload:
+        example: '{"key":"value"}'
+        type: string
+      tenant_id:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  domain.Tenant:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      status:
+        type: string
+      updated_at:
+        type: string
+      workers:
+        type: integer
+    type: object
+  domain.TenantConsumer:
+    properties:
+      consumer_tag:
+        type: string
+      is_active:
+        type: boolean
+      last_heartbeat:
+        type: string
+      queue_name:
+        type: string
+      tenant_id:
+        type: string
+      worker_count:
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: This is a sample server for Sample Stack Golang.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Sample Stack Golang API
+  version: "1.0"
+paths:
+  /messages:
+    get:
+      consumes:
+      - application/json
+      description: Get messages from all tenants with pagination
+      parameters:
+      - description: 'Number of messages to return (default: 10, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      - description: Cursor for pagination
+        in: query
+        name: cursor
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all messages
+      tags:
+      - messages
+  /tenants:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all tenants in the system
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Tenant'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List all tenants
+      tags:
+      - tenants
+    post:
+      consumes:
+      - application/json
+      description: Create a new tenant in the system
+      parameters:
+      - description: Tenant Information
+        in: body
+        name: tenant
+        required: true
+        schema:
+          $ref: '#/definitions/domain.Tenant'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Tenant'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new tenant
+      tags:
+      - tenants
+  /tenants/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a tenant from the system
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a tenant
+      tags:
+      - tenants
+    get:
+      consumes:
+      - application/json
+      description: Get a specific tenant by its ID
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Tenant'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get tenant by ID
+      tags:
+      - tenants
+    put:
+      consumes:
+      - application/json
+      description: Update an existing tenant's information
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated Tenant Information
+        in: body
+        name: tenant
+        required: true
+        schema:
+          $ref: '#/definitions/domain.Tenant'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Tenant'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update a tenant
+      tags:
+      - tenants
+  /tenants/{id}/concurrency:
+    put:
+      consumes:
+      - application/json
+      description: Update the concurrency configuration for a tenant
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Concurrency Configuration
+        in: body
+        name: config
+        required: true
+        schema:
+          $ref: '#/definitions/domain.ConcurrencyConfig'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.ConcurrencyConfig'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update tenant concurrency
+      tags:
+      - tenants
+  /tenants/{id}/consumers:
+    get:
+      consumes:
+      - application/json
+      description: Get consumer information for a specific tenant or all tenants
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.TenantConsumer'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get tenant consumers
+      tags:
+      - tenants
+  /tenants/{id}/with-cleanup:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a tenant and clean up its resources including consumer
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete tenant with cleanup
+      tags:
+      - tenants
+  /tenants/{tenant_id}/messages:
+    get:
+      consumes:
+      - application/json
+      description: Get all messages for a specific tenant with pagination
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: tenant_id
+        required: true
+        type: string
+      - description: 'Number of messages to return (default: 10, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      - description: Cursor for pagination
+        in: query
+        name: cursor
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get messages by tenant
+      tags:
+      - messages
+    post:
+      consumes:
+      - application/json
+      description: Create a new message for a specific tenant
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: tenant_id
+        required: true
+        type: string
+      - description: Message Information
+        in: body
+        name: message
+        required: true
+        schema:
+          $ref: '#/definitions/domain.Message'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Message'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new message
+      tags:
+      - messages
+  /tenants/{tenant_id}/messages/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a message for a tenant
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: tenant_id
+        required: true
+        type: string
+      - description: Message ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a message
+      tags:
+      - messages
+    get:
+      consumes:
+      - application/json
+      description: Get a specific message by its ID for a tenant
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: tenant_id
+        required: true
+        type: string
+      - description: Message ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Message'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get message by ID
+      tags:
+      - messages
+    put:
+      consumes:
+      - application/json
+      description: Update an existing message for a tenant
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: tenant_id
+        required: true
+        type: string
+      - description: Message ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated Message Information
+        in: body
+        name: message
+        required: true
+        schema:
+          $ref: '#/definitions/domain.Message'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Message'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update a message
+      tags:
+      - messages
+  /tenants/consumers:
+    get:
+      consumes:
+      - application/json
+      description: Get consumer information for a specific tenant or all tenants
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.TenantConsumer'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get tenant consumers
+      tags:
+      - tenants
+  /tenants/with-consumer:
+    post:
+      consumes:
+      - application/json
+      description: Create a new tenant and start its message consumer
+      parameters:
+      - description: Tenant Information
+        in: body
+        name: tenant
+        required: true
+        schema:
+          $ref: '#/definitions/domain.Tenant'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Tenant'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create tenant with consumer
+      tags:
+      - tenants
+  /users:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all users
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all users
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: Create a new user with the provided information
+      parameters:
+      - description: User Information
+        in: body
+        name: user
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create new user
+      tags:
+      - users
+  /users/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a user by their ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete user
+      tags:
+      - users
+    get:
+      consumes:
+      - application/json
+      description: Get a user by their ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get user by ID
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Update an existing user's information
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: User Information
+        in: body
+        name: user
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update user
+      tags:
+      - users
+schemes:
+- http
+- https
+swagger: "2.0"

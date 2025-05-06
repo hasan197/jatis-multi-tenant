@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
@@ -8,6 +8,10 @@ RUN apk add --no-cache git make gcc libc-dev
 
 # Install golang-migrate
 RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+# Install swag and swagger dependencies
+RUN go install github.com/swaggo/swag/cmd/swag@latest && \
+    go install github.com/swaggo/echo-swagger@latest
 
 # Copy go mod and sum files
 COPY go.mod go.sum ./
@@ -26,7 +30,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o /app/backend-golang cmd/serve/main.go
 
 # Development stage
-FROM golang:1.21-alpine AS development
+FROM golang:1.23-alpine AS development
 
 WORKDIR /app
 

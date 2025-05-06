@@ -40,6 +40,14 @@ func (h *UserHandler) getRequestContext(c echo.Context) map[string]interface{} {
 }
 
 // GetUsers menangani request untuk mendapatkan semua user
+// @Summary Get all users
+// @Description Get a list of all users
+// @Tags users
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /users [get]
 func (h *UserHandler) GetUsers(c echo.Context) error {
 	ctx := h.getRequestContext(c)
 	log := h.logger.WithFields(ctx)
@@ -65,6 +73,16 @@ func (h *UserHandler) GetUsers(c echo.Context) error {
 }
 
 // GetUser menangani request untuk mendapatkan satu user berdasarkan ID
+// @Summary Get user by ID
+// @Description Get a user by their ID
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param id path int true "User ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /users/{id} [get]
 func (h *UserHandler) GetUser(c echo.Context) error {
 	idParam := c.Param("id")
 	ctx := h.getRequestContext(c)
@@ -104,6 +122,15 @@ func (h *UserHandler) GetUser(c echo.Context) error {
 }
 
 // CreateUser menangani request untuk membuat user baru
+// @Summary Create new user
+// @Description Create a new user with the provided information
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param user body object true "User Information"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Router /users [post]
 func (h *UserHandler) CreateUser(c echo.Context) error {
 	ctx := h.getRequestContext(c)
 	log := h.logger.WithFields(ctx)
@@ -166,6 +193,17 @@ func (h *UserHandler) CreateUser(c echo.Context) error {
 }
 
 // UpdateUser menangani request untuk memperbarui data user
+// @Summary Update user
+// @Description Update an existing user's information
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param id path int true "User ID"
+// @Param user body object true "User Information"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /users/{id} [put]
 func (h *UserHandler) UpdateUser(c echo.Context) error {
 	idParam := c.Param("id")
 	ctx := h.getRequestContext(c)
@@ -240,6 +278,16 @@ func (h *UserHandler) UpdateUser(c echo.Context) error {
 }
 
 // DeleteUser menangani request untuk menghapus user
+// @Summary Delete user
+// @Description Delete a user by their ID
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param id path int true "User ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /users/{id} [delete]
 func (h *UserHandler) DeleteUser(c echo.Context) error {
 	idParam := c.Param("id")
 	ctx := h.getRequestContext(c)

@@ -23,6 +23,17 @@ func NewMessageHandler(messageUsecase *usecase.MessageUsecase) *MessageHandler {
 }
 
 // Create handles message creation
+// @Summary Create a new message
+// @Description Create a new message for a specific tenant
+// @Tags messages
+// @Accept json
+// @Produce json
+// @Param tenant_id path string true "Tenant ID"
+// @Param message body domain.Message true "Message Information"
+// @Success 201 {object} domain.Message
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /tenants/{tenant_id}/messages [post]
 func (h *MessageHandler) Create(c echo.Context) error {
 	tenantID, err := uuid.Parse(c.Param("tenant_id"))
 	if err != nil {
@@ -44,6 +55,17 @@ func (h *MessageHandler) Create(c echo.Context) error {
 }
 
 // GetByID handles getting a message by ID
+// @Summary Get message by ID
+// @Description Get a specific message by its ID for a tenant
+// @Tags messages
+// @Accept json
+// @Produce json
+// @Param tenant_id path string true "Tenant ID"
+// @Param id path string true "Message ID"
+// @Success 200 {object} domain.Message
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /tenants/{tenant_id}/messages/{id} [get]
 func (h *MessageHandler) GetByID(c echo.Context) error {
 	tenantID, err := uuid.Parse(c.Param("tenant_id"))
 	if err != nil {
@@ -64,6 +86,18 @@ func (h *MessageHandler) GetByID(c echo.Context) error {
 }
 
 // GetByTenant handles getting messages by tenant ID
+// @Summary Get messages by tenant
+// @Description Get all messages for a specific tenant with pagination
+// @Tags messages
+// @Accept json
+// @Produce json
+// @Param tenant_id path string true "Tenant ID"
+// @Param limit query int false "Number of messages to return (default: 10, max: 100)"
+// @Param cursor query string false "Cursor for pagination"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /tenants/{tenant_id}/messages [get]
 func (h *MessageHandler) GetByTenant(c echo.Context) error {
 	tenantID, err := uuid.Parse(c.Param("tenant_id"))
 	if err != nil {
@@ -94,6 +128,16 @@ func (h *MessageHandler) GetByTenant(c echo.Context) error {
 }
 
 // GetMessages handles global message retrieval with cursor pagination
+// @Summary Get all messages
+// @Description Get messages from all tenants with pagination
+// @Tags messages
+// @Accept json
+// @Produce json
+// @Param limit query int false "Number of messages to return (default: 10, max: 100)"
+// @Param cursor query string false "Cursor for pagination"
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} map[string]string
+// @Router /messages [get]
 func (h *MessageHandler) GetMessages(c echo.Context) error {
 	// Parse limit from query param, default to 10 if not provided or invalid
 	limit, err := strconv.Atoi(c.QueryParam("limit"))
@@ -118,6 +162,18 @@ func (h *MessageHandler) GetMessages(c echo.Context) error {
 }
 
 // Update handles message update
+// @Summary Update a message
+// @Description Update an existing message for a tenant
+// @Tags messages
+// @Accept json
+// @Produce json
+// @Param tenant_id path string true "Tenant ID"
+// @Param id path string true "Message ID"
+// @Param message body domain.Message true "Updated Message Information"
+// @Success 200 {object} domain.Message
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /tenants/{tenant_id}/messages/{id} [put]
 func (h *MessageHandler) Update(c echo.Context) error {
 	tenantID, err := uuid.Parse(c.Param("tenant_id"))
 	if err != nil {
@@ -145,6 +201,17 @@ func (h *MessageHandler) Update(c echo.Context) error {
 }
 
 // Delete handles message deletion
+// @Summary Delete a message
+// @Description Delete a message for a tenant
+// @Tags messages
+// @Accept json
+// @Produce json
+// @Param tenant_id path string true "Tenant ID"
+// @Param id path string true "Message ID"
+// @Success 204 "No Content"
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /tenants/{tenant_id}/messages/{id} [delete]
 func (h *MessageHandler) Delete(c echo.Context) error {
 	tenantID, err := uuid.Parse(c.Param("tenant_id"))
 	if err != nil {

@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/go-playground/validator/v10"
 	_ "github.com/lib/pq"
+	_ "sample-stack-golang/docs" // swagger docs
 	
 	"sample-stack-golang/internal/config"
 	"sample-stack-golang/internal/di"
@@ -20,7 +21,24 @@ import (
 	tenantHttp "sample-stack-golang/internal/modules/tenant/delivery/http"
 	messageHttp "sample-stack-golang/internal/modules/message/delivery/http"
 	"sample-stack-golang/pkg/logger"
+	"github.com/swaggo/echo-swagger"
 )
+
+// @title Sample Stack Golang API
+// @version 1.0
+// @description This is a sample server for Sample Stack Golang.
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url http://www.swagger.io/support
+// @contact.email support@swagger.io
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:8080
+// @BasePath /api
+// @schemes http https
 
 // CustomValidator adalah custom validator untuk Echo
 type CustomValidator struct {
@@ -78,6 +96,9 @@ func main() {
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORS())
 	e.Use(shutdownManager.WaitGroupMiddleware())
+
+	// Swagger documentation
+	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
 	// Health check endpoint
 	e.GET("/health", func(c echo.Context) error {
