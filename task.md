@@ -63,6 +63,8 @@ nerdctl exec -it jatis-sample-stack-golang-rabbitmq-1 rabbitmqctl list_consumers
 
 > nerdctl logs --tail 50 jatis-sample-stack-golang-backend-golang-1 |grep "\"Starting worker\",\"tenant_id\":\"c383e35c-e199-4ff4-8958-653fbafc9dbc\""
 
+> nerdctl logs --tail 50 jatis-sample-stack-golang-backend-golang-1 |grep "Processing message\",\"tenant_id\":\"c383e35c-e199-4ff4-8958-653fbafc9dbc\""
+
 ### 5. Graceful Shutdown
 - **Implementation**:
     - Application must process ongoing transaction before stop.

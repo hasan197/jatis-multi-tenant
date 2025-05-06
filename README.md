@@ -48,7 +48,7 @@
 1. Build image backend-golang:
    ```bash
    nerdctl compose -f backend-golang/docker-compose.test.yml build
-   ```
+   ```   
 
 2. Jalankan test backend-golang:
    ```bash
