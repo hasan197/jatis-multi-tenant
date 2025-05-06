@@ -14,12 +14,21 @@ Build a Go application using RabbitMQ and PostgreSQL that handles multi-tenant m
         - Store consumer control channel in `TenantManager`.
     - Use RabbitMQ's `channel.Consume()` with unique consumer tags.
 
+
+curl -X POST http://localhost:8080/api/tenants -H "Content-Type: application/json" -d '{"name":"Test Partition","description":"Test tenant for partition verification","status":"active"}'
+
+nerdctl exec -it jatis-sample-stack-golang-postgres-1 psql -U postgres -d sample_db -c "SELECT tablename FROM pg_tables WHERE tablename LIKE 'messages_%';"
+
 ### 2. Auto-Stop Tenant Consumer
 - **Implementation**:
     - On `DELETE /tenants/{id}`:
         - Send shutdown signal via consumer's control channel.
         - Close RabbitMQ channel and delete queue.
         - Remove tenant from `TenantManager`.
+
+curl -X DELETE http://localhost:8080/api/tenants/2a7a0324-8118-4e0a-9699-35c1ca694c2e
+nerdctl exec -it jatis-sample-stack-golang-rabbitmq-1 rabbitmqctl list_channels
+nerdctl exec -it jatis-sample-stack-golang-rabbitmq-1 rabbitmqctl list_consumers
 
 ### 3. Partitioned Message Table
 - **Database Schema**:
@@ -41,6 +50,13 @@ Build a Go application using RabbitMQ and PostgreSQL that handles multi-tenant m
 - **Implementation**:
     - Use worker pool pattern with buffered channel.
     - Atomic variable to track worker count.
+
+> curl -X PUT http://localhost:8080/api/tenants/2916830d-8ae9-479f-a5af-5f36cda831de/config/concurrency -H "Content-Type: application/json" -d '{"workers": 5}'
+
+> nerdctl exec -it jatis-sample-stack-golang-postgres-1 psql -U postgres -d sample_db -c "SELECT id, name, workers FROM tenants WHERE id = '2916830d-8ae9-479f-a5af-5f36cda831de';"
+
+> nerdctl logs jatis-sample-stack-golang-backend-golang-1 | grep "2916830d-8ae9-479f-a5af-5f36cda831de" | grep -i worker | tail -10
+
 
 ### 5. Graceful Shutdown
 - **Implementation**:

@@ -18,6 +18,7 @@ import (
 	tenantRabbitMQ "sample-stack-golang/internal/modules/tenant/delivery/messaging/rabbitmq"
 	messageRepo "sample-stack-golang/internal/modules/message/repository/postgresql"
 	messageUsecase "sample-stack-golang/internal/modules/message/usecase"
+	"sample-stack-golang/pkg/logger"
 )
 
 // ServiceContainer adalah interface untuk mengakses service
@@ -99,12 +100,15 @@ func NewService(cfg *config.Config) (*Service, error) {
 	// Initialize Redis
 	redis, err := initRedis(cfg)
 	if err != nil {
+		pool.Close() // Cleanup database connection
 		return nil, fmt.Errorf("failed to initialize Redis: %v", err)
 	}
 
 	// Initialize RabbitMQ
 	rabbitmq, err := initRabbitMQ(cfg)
 	if err != nil {
+		pool.Close() // Cleanup database connection
+		redis.Close() // Cleanup Redis connection
 		return nil, fmt.Errorf("failed to initialize RabbitMQ: %v", err)
 	}
 
@@ -114,7 +118,7 @@ func NewService(cfg *config.Config) (*Service, error) {
 	messageRepo := messageRepo.NewMessageRepository(pool)
 
 	// Initialize RabbitMQ tenant manager
-	tenantManager := tenantRabbitMQ.NewTenantManager(rabbitmq)
+	tenantManager := tenantRabbitMQ.NewTenantManager(rabbitmq, pool)
 
 	// Initialize usecases
 	userUseCase := userUsecase.NewUserUseCase(userRepo)
@@ -123,18 +127,28 @@ func NewService(cfg *config.Config) (*Service, error) {
 
 	// Start tenant manager
 	if err := tenantManager.Start(context.Background()); err != nil {
+		pool.Close() // Cleanup database connection
+		redis.Close() // Cleanup Redis connection
+		rabbitmq.Close() // Cleanup RabbitMQ connection
 		return nil, fmt.Errorf("failed to start tenant manager: %v", err)
 	}
 
 	// Start consumers for existing tenants
 	tenants, err := tenantRepo.List(context.Background())
 	if err != nil {
+		pool.Close() // Cleanup database connection
+		redis.Close() // Cleanup Redis connection
+		rabbitmq.Close() // Cleanup RabbitMQ connection
 		return nil, fmt.Errorf("failed to list tenants: %v", err)
 	}
 
 	for _, tenant := range tenants {
 		if err := tenantManager.StartConsumer(context.Background(), tenant.ID); err != nil {
-			fmt.Printf("Warning: failed to start consumer for tenant %s: %v\n", tenant.ID, err)
+			logger.Log.WithFields(map[string]interface{}{
+				"tenant_id": tenant.ID,
+				"error":     err,
+			}).Warn("Failed to start consumer for tenant")
+			// Continue with other tenants even if one fails
 		}
 	}
 

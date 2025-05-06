@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/streadway/amqp"
 	"sample-stack-golang/internal/modules/tenant/domain"
 	"sample-stack-golang/pkg/logger"
@@ -17,14 +18,16 @@ type TenantManager struct {
 	consumers  map[string]*domain.TenantConsumer
 	mu         sync.RWMutex
 	stopChan   chan struct{}
+	db         *pgxpool.Pool
 }
 
 // NewTenantManager membuat instance baru dari TenantManager
-func NewTenantManager(rabbitConn *amqp.Connection) domain.TenantManager {
+func NewTenantManager(rabbitConn *amqp.Connection, db *pgxpool.Pool) domain.TenantManager {
 	return &TenantManager{
 		rabbitConn: rabbitConn,
 		consumers:  make(map[string]*domain.TenantConsumer),
 		stopChan:   make(chan struct{}),
+		db:         db,
 	}
 }
 
@@ -61,10 +64,18 @@ func (m *TenantManager) StartConsumer(ctx context.Context, tenantID string) erro
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// Check jika consumer sudah ada
-	// if _, exists := m.consumers[tenantID]; exists {
-	// 	return fmt.Errorf("consumer already exists for tenant %s", tenantID)
-	// }
+	// Get tenant details to determine worker count
+	// First, check if we already have a consumer for this tenant
+	oldConsumer, exists := m.consumers[tenantID]
+	if exists && oldConsumer != nil {
+		// Stop existing consumer first
+		if err := m.stopConsumer(ctx, tenantID); err != nil {
+			logger.Log.WithFields(map[string]interface{}{
+				"tenant_id": tenantID,
+				"error":     err,
+			}).Warn("Error stopping existing consumer before restart")
+		}
+	}
 
 	// Buat channel
 	ch, err := m.rabbitConn.Channel()
@@ -87,6 +98,25 @@ func (m *TenantManager) StartConsumer(ctx context.Context, tenantID string) erro
 		return fmt.Errorf("failed to declare queue: %v", err)
 	}
 
+	// Get tenant details from database to determine worker count
+	db := m.db
+	var workerCount int
+	if err := db.QueryRow(ctx, "SELECT workers FROM tenants WHERE id = $1", tenantID).Scan(&workerCount); err != nil {
+		logger.Log.WithFields(map[string]interface{}{
+			"tenant_id": tenantID,
+			"error":     err,
+		}).Warn("Failed to get worker count from database, using default")
+		workerCount = 3 // Default worker count
+	}
+
+	// Ensure worker count is at least 1
+	if workerCount < 1 {
+		workerCount = 1
+	}
+
+	// Create buffered message channel for worker pool
+	messageChan := make(chan amqp.Delivery, workerCount*10) // Buffer size is 10x worker count
+
 	// Buat consumer
 	consumer := &domain.TenantConsumer{
 		TenantID:      tenantID,
@@ -97,7 +127,11 @@ func (m *TenantManager) StartConsumer(ctx context.Context, tenantID string) erro
 		IsActive:      true,
 		LastHeartbeat: time.Now(),
 		ErrorChannel:  make(chan error, 1),
+		MessageChan:   messageChan,
 	}
+
+	// Initialize worker count atomic variable
+	consumer.WorkerCount.Store(int32(workerCount))
 
 	// Start consuming
 	msgs, err := ch.Consume(
@@ -117,8 +151,19 @@ func (m *TenantManager) StartConsumer(ctx context.Context, tenantID string) erro
 	// Simpan consumer
 	m.consumers[tenantID] = consumer
 
-	// Start message processing goroutine
-	go m.processMessages(consumer, msgs)
+	// Start message forwarding goroutine
+	go m.forwardMessages(consumer, msgs)
+
+	// Start worker pool
+	for i := 0; i < workerCount; i++ {
+		workerID := i
+		go m.startWorker(consumer, workerID)
+	}
+
+	logger.Log.WithFields(map[string]interface{}{
+		"tenant_id":    tenantID,
+		"worker_count": workerCount,
+	}).Info("Started consumer with worker pool")
 
 	return nil
 }
@@ -191,7 +236,7 @@ func (m *TenantManager) DebugRabbitMQState(ctx context.Context, tenantID string)
 	logger.Log.Info("=== END DEBUG: RabbitMQ State ===")
 }
 
-// stopConsumer menghentikan consumer (internal method, assumes lock is held)
+// stopConsumer menghentikan consumer dan membersihkan resources
 func (m *TenantManager) stopConsumer(ctx context.Context, tenantID string) error {
 	logger.Log.WithField("tenant_id", tenantID).Info("Starting consumer stop process")
 	
@@ -208,7 +253,7 @@ func (m *TenantManager) stopConsumer(ctx context.Context, tenantID string) error
 
 	// Delete queue
 	if err := m.deleteQueue(tenantID); err != nil {
-		return err
+		logger.Log.WithError(err).Warn("Error deleting queue")
 	}
 
 	// Hapus consumer dari map
@@ -241,7 +286,14 @@ func (m *TenantManager) getAndValidateConsumer(tenantID string) (*domain.TenantC
 func (m *TenantManager) stopConsumerAndChannel(tenantID string, consumer *domain.TenantConsumer) error {
 	// Signal stop ke message processing goroutine
 	logger.Log.WithField("tenant_id", tenantID).Info("Signaling stop to consumer goroutine")
-	close(consumer.StopChannel)
+	
+	// Pastikan channel belum ditutup
+	select {
+	case <-consumer.StopChannel:
+		logger.Log.WithField("tenant_id", tenantID).Info("Stop channel already closed")
+	default:
+		close(consumer.StopChannel)
+	}
 
 	if consumer.Channel == nil {
 		return nil
@@ -454,6 +506,65 @@ func (m *TenantManager) UpdateHeartbeat(tenantID string) {
 	defer m.mu.Unlock()
 	if consumer, exists := m.consumers[tenantID]; exists {
 		consumer.LastHeartbeat = time.Now()
+	}
+}
+
+// forwardMessages meneruskan pesan dari RabbitMQ ke message channel untuk diproses oleh worker pool
+func (m *TenantManager) forwardMessages(consumer *domain.TenantConsumer, msgs <-chan amqp.Delivery) {
+	logger.Log.WithField("tenant_id", consumer.TenantID).Info("Starting message forwarder")
+	for {
+		select {
+		case <-consumer.StopChannel:
+			logger.Log.WithField("tenant_id", consumer.TenantID).Info("Stopping message forwarder")
+			close(consumer.MessageChan) // Close message channel to signal workers to stop
+			return
+		case msg, ok := <-msgs:
+			if !ok {
+				consumer.ErrorChannel <- fmt.Errorf("message channel closed")
+				return
+			}
+
+			// Forward message to worker pool
+			consumer.MessageChan <- msg
+		}
+	}
+}
+
+// startWorker memulai worker untuk memproses pesan dari message channel
+func (m *TenantManager) startWorker(consumer *domain.TenantConsumer, workerID int) {
+	logger.Log.WithFields(map[string]interface{}{
+		"tenant_id": consumer.TenantID,
+		"worker_id": workerID,
+	}).Info("Starting worker")
+
+	for {
+		select {
+		case <-consumer.StopChannel:
+			logger.Log.WithFields(map[string]interface{}{
+				"tenant_id": consumer.TenantID,
+				"worker_id": workerID,
+			}).Info("Stopping worker")
+			return
+		case msg, ok := <-consumer.MessageChan:
+			if !ok {
+				// Channel closed, exit worker
+				logger.Log.WithFields(map[string]interface{}{
+					"tenant_id": consumer.TenantID,
+					"worker_id": workerID,
+				}).Info("Message channel closed, stopping worker")
+				return
+			}
+
+			// Process message
+			logger.Log.WithFields(map[string]interface{}{
+				"tenant_id": consumer.TenantID,
+				"worker_id": workerID,
+				"message":   string(msg.Body),
+			}).Info("Processing message")
+
+			// Acknowledge message after processing
+			msg.Ack(false)
+		}
 	}
 }
 

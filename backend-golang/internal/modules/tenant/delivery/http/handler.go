@@ -174,4 +174,35 @@ func (h *TenantHandler) GetTenantConsumers(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, consumers)
-} 
+}
+
+// UpdateConcurrency handles updating tenant concurrency configuration
+func (h *TenantHandler) UpdateConcurrency(c echo.Context) error {
+	// Get tenant ID from path parameter
+	id := c.Param("id")
+
+	// Parse request body
+	var config domain.ConcurrencyConfig
+	if err := c.Bind(&config); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
+	}
+
+	// Validate worker count
+	if config.Workers <= 0 {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Worker count must be greater than 0"})
+	}
+
+	// Update concurrency configuration
+	if err := h.tenantUseCase.UpdateConcurrency(c.Request().Context(), id, &config); err != nil {
+		if err.Error() == "tenant not found" {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "Tenant not found"})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"message": "Concurrency configuration updated successfully",
+		"tenant_id": id,
+		"workers": config.Workers,
+	})
+}

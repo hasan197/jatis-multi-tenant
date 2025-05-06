@@ -136,12 +136,59 @@ func (u *TenantUseCase) StopConsumer(ctx context.Context, tenantID string) error
 
 // GetConsumers gets all consumers
 func (u *TenantUseCase) GetConsumers(ctx context.Context) ([]*domain.TenantConsumer, error) {
+	if u.manager == nil {
+		return nil, fmt.Errorf("tenant manager not initialized")
+	}
 	consumers := u.manager.GetAllConsumers()
 	return consumers, nil
 }
 
-// StopConsumer stops the consumer
-func StopConsumer(consumer *domain.TenantConsumer) error {
-	close(consumer.StopChannel)
+// UpdateConcurrency updates the concurrency configuration for a tenant
+func (u *TenantUseCase) UpdateConcurrency(ctx context.Context, id string, config *domain.ConcurrencyConfig) error {
+	// Validate input
+	if config == nil || config.Workers <= 0 {
+		return ErrInvalidInput
+	}
+
+	// Check if tenant exists
+	_, err := u.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// Update concurrency in database
+	if err := u.repo.UpdateConcurrency(ctx, id, config.Workers); err != nil {
+		return fmt.Errorf("failed to update concurrency: %v", err)
+	}
+
+	// Update consumer concurrency if it exists
+	if u.manager == nil {
+		return fmt.Errorf("tenant manager not initialized")
+	}
+	
+	consumer := u.manager.GetConsumer(id)
+	if consumer != nil {
+		// Restart consumer with new worker count
+		if err := u.StopConsumer(ctx, id); err != nil {
+			logger.Log.WithFields(map[string]interface{}{
+				"tenant_id": id,
+				"error":     err,
+			}).Warn("Failed to stop consumer during concurrency update, continuing")
+		}
+
+		// Start consumer with new worker count
+		if err := u.StartConsumer(ctx, id); err != nil {
+			return fmt.Errorf("failed to restart consumer with new concurrency: %v", err)
+		}
+	}
+
 	return nil
-} 
+}
+
+// stopConsumer is a helper method to stop a consumer
+func (u *TenantUseCase) stopConsumer(consumer *domain.TenantConsumer) error {
+	if consumer != nil && consumer.StopChannel != nil {
+		close(consumer.StopChannel)
+	}
+	return nil
+}

@@ -12,10 +12,11 @@ func RegisterRoutes(e *echo.Echo, h *TenantHandler) {
 	tenants.DELETE("/:id", h.DeleteTenant)
 	tenants.GET("/consumers", h.GetTenantConsumers)
 	tenants.GET("/:id/consumers", h.GetTenantConsumers)
+	tenants.PUT("/:id/config/concurrency", h.UpdateConcurrency) // New endpoint for configuring concurrency
 	
 	// tenants.POST("", h.Create)
 	tenants.GET("", h.List)
 	tenants.GET("/:id", h.GetByID)
 	tenants.PUT("/:id", h.Update)
 	tenants.DELETE("/:id", h.Delete)
-} 
+}

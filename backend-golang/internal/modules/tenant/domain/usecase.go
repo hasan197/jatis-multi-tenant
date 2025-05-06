@@ -29,4 +29,5 @@ type TenantUseCase interface {
 	StartConsumer(ctx context.Context, tenantID string) error
 	StopConsumer(ctx context.Context, tenantID string) error
 	GetConsumers(ctx context.Context) ([]*TenantConsumer, error)
+	UpdateConcurrency(ctx context.Context, id string, config *ConcurrencyConfig) error
 }

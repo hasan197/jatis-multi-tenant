@@ -11,4 +11,5 @@ type TenantRepository interface {
 	Update(ctx context.Context, tenant *Tenant) error
 	Delete(ctx context.Context, id string) error
 	List(ctx context.Context) ([]*Tenant, error)
-} 
+	UpdateConcurrency(ctx context.Context, id string, workers int) error
+}

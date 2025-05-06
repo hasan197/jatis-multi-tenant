@@ -28,6 +28,11 @@ func (r *TenantRepository) Create(ctx context.Context, tenant *domain.Tenant) er
 	// Generate UUID for new tenant
 	tenant.ID = uuid.New().String()
 
+	// Set default workers if not specified
+	if tenant.Workers <= 0 {
+		tenant.Workers = 3 // Default worker count
+	}
+
 	// Start transaction
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -37,14 +42,15 @@ func (r *TenantRepository) Create(ctx context.Context, tenant *domain.Tenant) er
 
 	// Insert tenant
 	query := `
-		INSERT INTO tenants (id, name, description, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)`
+		INSERT INTO tenants (id, name, description, status, workers, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`
 
 	_, err = tx.Exec(ctx, query,
 		tenant.ID,
 		tenant.Name,
 		tenant.Description,
 		tenant.Status,
+		tenant.Workers,
 		time.Now(),
 		time.Now(),
 	)
@@ -70,7 +76,7 @@ func (r *TenantRepository) Create(ctx context.Context, tenant *domain.Tenant) er
 // GetByID gets a tenant by ID
 func (r *TenantRepository) GetByID(ctx context.Context, id string) (*domain.Tenant, error) {
 	query := `
-		SELECT id, name, description, status, created_at, updated_at
+		SELECT id, name, description, status, workers, created_at, updated_at
 		FROM tenants
 		WHERE id = $1`
 
@@ -80,6 +86,7 @@ func (r *TenantRepository) GetByID(ctx context.Context, id string) (*domain.Tena
 		&tenant.Name,
 		&tenant.Description,
 		&tenant.Status,
+		&tenant.Workers,
 		&tenant.CreatedAt,
 		&tenant.UpdatedAt,
 	)
@@ -137,7 +144,6 @@ func (r *TenantRepository) Delete(ctx context.Context, id string) error {
 
 	// Delete the tenant
 	query := `DELETE FROM tenants WHERE id = $1`
-	fmt.Errorf(`DELETE FROM tenants WHERE id = $1`)
 	result, err := tx.Exec(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete tenant: %w", err)
@@ -158,7 +164,7 @@ func (r *TenantRepository) Delete(ctx context.Context, id string) error {
 // List lists all tenants
 func (r *TenantRepository) List(ctx context.Context) ([]*domain.Tenant, error) {
 	query := `
-		SELECT id, name, description, status, created_at, updated_at
+		SELECT id, name, description, status, workers, created_at, updated_at
 		FROM tenants
 		ORDER BY id`
 
@@ -176,6 +182,7 @@ func (r *TenantRepository) List(ctx context.Context) ([]*domain.Tenant, error) {
 			&tenant.Name,
 			&tenant.Description,
 			&tenant.Status,
+			&tenant.Workers,
 			&tenant.CreatedAt,
 			&tenant.UpdatedAt,
 		)
@@ -190,4 +197,23 @@ func (r *TenantRepository) List(ctx context.Context) ([]*domain.Tenant, error) {
 	}
 
 	return tenants, nil
-} 
+}
+
+// UpdateConcurrency updates the concurrency configuration for a tenant
+func (r *TenantRepository) UpdateConcurrency(ctx context.Context, id string, workers int) error {
+	query := `
+		UPDATE tenants
+		SET workers = $1, updated_at = $2
+		WHERE id = $3`
+
+	result, err := r.db.Exec(ctx, query, workers, time.Now(), id)
+	if err != nil {
+		return fmt.Errorf("failed to update tenant concurrency: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+
+	return nil
+}
