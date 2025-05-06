@@ -8,18 +8,22 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"sample-stack-golang/internal/config"
 	"sample-stack-golang/internal/modules/tenant/domain"
 )
 
 // TenantRepository implements domain.TenantRepository
 type TenantRepository struct {
-	db *pgxpool.Pool
+	db       *pgxpool.Pool
+	config   *config.Config
 }
 
 // NewTenantRepository creates a new tenant repository
-func NewTenantRepository(db *pgxpool.Pool) domain.TenantRepository {
+func NewTenantRepository(db *pgxpool.Pool, cfg *config.Config) domain.TenantRepository {
 	return &TenantRepository{
-		db: db,
+		db:     db,
+		config: cfg,
 	}
 }
 
@@ -30,7 +34,12 @@ func (r *TenantRepository) Create(ctx context.Context, tenant *domain.Tenant) er
 
 	// Set default workers if not specified
 	if tenant.Workers <= 0 {
-		tenant.Workers = 3 // Default worker count
+		// Ambil nilai default worker dari konfigurasi
+		tenant.Workers = r.config.App.Workers
+		// Jika tidak ada di konfigurasi, gunakan nilai default 3
+		if tenant.Workers <= 0 {
+			tenant.Workers = 3 // Fallback default worker count
+		}
 	}
 
 	// Start transaction

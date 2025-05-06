@@ -21,6 +21,7 @@ type AppConfig struct {
 	Port    int    `mapstructure:"port"`
 	Version string `mapstructure:"version"`
 	Env     string `mapstructure:"env"`
+	Workers int    `mapstructure:"workers"`
 }
 
 // ServerConfig holds server configuration

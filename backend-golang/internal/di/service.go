@@ -114,7 +114,7 @@ func NewService(cfg *config.Config) (*Service, error) {
 
 	// Initialize repositories
 	userRepo := userRepo.NewUserRepository(pool)
-	tenantRepo := tenantRepo.NewTenantRepository(pool)
+	tenantRepo := tenantRepo.NewTenantRepository(pool, cfg)
 	messageRepo := messageRepo.NewMessageRepository(pool)
 
 	// Initialize RabbitMQ tenant manager
