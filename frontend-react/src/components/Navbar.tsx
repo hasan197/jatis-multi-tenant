@@ -6,12 +6,21 @@ const Navbar = () => {
     <AppBar position="static">
       <Toolbar>
         <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-          Sample Stack App
+          Jatis Sample Stack
         </Typography>
-        <Box>
-          <Button color="inherit" component={Link} to="/">Home</Button>
-          <Button color="inherit" component={Link} to="/hello-world">Hello World</Button>
-          <Button color="inherit" component={Link} to="/users">Users</Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button color="inherit" component={Link} to="/">
+            Home
+          </Button>
+          <Button color="inherit" component={Link} to="/hello">
+            Hello World
+          </Button>
+          <Button color="inherit" component={Link} to="/users">
+            Users
+          </Button>
+          <Button color="inherit" component={Link} to="/dashboard">
+            RabbitMQ Publisher
+          </Button>
         </Box>
       </Toolbar>
     </AppBar>
