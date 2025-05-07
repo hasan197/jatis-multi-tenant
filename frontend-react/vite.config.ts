@@ -15,7 +15,7 @@ export default defineConfig({
     proxy: {
       // Proxy semua permintaan /api ke server Go
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://backend-nodejs:3000',
         changeOrigin: true,
         secure: false
       }
