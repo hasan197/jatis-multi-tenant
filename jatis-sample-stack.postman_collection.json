@@ -171,6 +171,199 @@
 						},
 						"description": "Get all tenant consumers"
 					}
+				},
+				{
+					"name": "Get Tenant Consumer by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8080/api/tenants/:id/consumers",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"tenants",
+								":id",
+								"consumers"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "tenant-id-here",
+									"description": "ID of the tenant"
+								}
+							]
+						},
+						"description": "Get consumers for a specific tenant"
+					}
+				},
+				{
+					"name": "Publish Message to RabbitMQ",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\": \"Test message for RabbitMQ\",\n    \"priority\": 1\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/tenants/:id/publish",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"tenants",
+								":id",
+								"publish"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "tenant-id-here",
+									"description": "ID of the tenant"
+								}
+							]
+						},
+						"description": "Publish a message to RabbitMQ for a specific tenant"
+					}
+				},
+				{
+					"name": "Get Queue Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8080/api/tenants/:id/queue-status",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"tenants",
+								":id",
+								"queue-status"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "tenant-id-here",
+									"description": "ID of the tenant"
+								}
+							]
+						},
+						"description": "Get the status of the RabbitMQ queue for a specific tenant"
+					}
+				},
+				{
+					"name": "Get Dead Letter Queue Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8080/api/tenants/:id/dlq-status",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"tenants",
+								":id",
+								"dlq-status"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "tenant-id-here",
+									"description": "ID of the tenant"
+								}
+							]
+						},
+						"description": "Get the status of the Dead Letter Queue for a specific tenant"
+					}
+				},
+				{
+					"name": "Activate Consumer",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8080/api/tenants/:id/activate",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"tenants",
+								":id",
+								"activate"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "tenant-id-here",
+									"description": "ID of the tenant"
+								}
+							]
+						},
+						"description": "Activate the consumer for a specific tenant"
+					}
+				},
+				{
+					"name": "Update Concurrency",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"workers\": 5\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/tenants/:id/config/concurrency",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"tenants",
+								":id",
+								"config",
+								"concurrency"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "tenant-id-here",
+									"description": "ID of the tenant"
+								}
+							]
+						},
+						"description": "Update the concurrency (worker count) for a specific tenant"
+					}
 				}
 			],
 			"description": "Tenant management endpoints"
