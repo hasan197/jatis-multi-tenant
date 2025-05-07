@@ -13,6 +13,7 @@ services:
       - ./cmd:/app/cmd
       - ./go.mod:/app/go.mod
       - ./go.sum:/app/go.sum
+      - gomodcache:/go/pkg/mod
     environment:
       - GO_ENV=test
       - DB_HOST=test-db
@@ -22,6 +23,7 @@ services:
       - DB_NAME=testdb
       - GOPATH=/tmp/go
       - XDG_CACHE_HOME=/tmp/cache
+      - GOMODCACHE=/go/pkg/mod
     command: ["/bin/sh", "-c", "mkdir -p /app/coverage /tmp/go /tmp/cache && cd /app && sh ./scripts/run-test.sh"]
     depends_on:
       - test-db
@@ -39,3 +41,4 @@ services:
 
 volumes:
   test-db-data: 
+  gomodcache: 

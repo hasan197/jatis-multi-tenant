@@ -1,164 +1,128 @@
-# Jatis Sample Stack Golang
+# Intro: Menjalankan Aplikasi dengan Docker/nerdctl
 
-## Cara Menjalankan Aplikasi
+## Alur Kerja
 
-1. Jalankan stack aplikasi utama (backend, frontend, database, dsb):
+1. Sistem multi-tenant messaging menggunakan Docker Compose untuk menjalankan semua komponen:
+   - Backend Go untuk logika bisnis utama
+   - Backend Node.js sebagai proxy API
+   - Frontend React untuk antarmuka pengguna
+   - PostgreSQL untuk penyimpanan data
+   - RabbitMQ untuk messaging
+   - Prometheus untuk monitoring
+   - CATATAN: developer menggunakan command `nerdctl` sebagai alat docker, untuk command menggunakan `docker` tidak pernah dicoba
+
+2. Siklus hidup aplikasi:
+   - Inisialisasi database dan migrasi skema
+   - Koneksi ke RabbitMQ
+   - Pembuatan exchange dan queue
+   - Menjalankan consumer untuk tenant yang aktif
+   - Menyediakan API untuk interaksi dengan sistem
+
+## Endpoint API
+
+Setelah aplikasi berjalan, endpoint API berikut tersedia:
+
+- **Backend Go**: `http://localhost:8080`
+  - Endpoint API utama untuk manajemen tenant dan pesan
+  - Endpoint metrics Prometheus: `http://localhost:8080/metrics`
+  - Dokumentasi Swagger: `http://localhost:8080/swagger/index.html`
+
+- **Frontend React**: `http://localhost:5173`
+  - Antarmuka pengguna untuk interaksi dengan sistem
+  - Form untuk mempublikasikan pesan
+
+- **Proxy Server**: `http://localhost:3000`
+  - API untuk interaksi dengan sistem dan diteruskan ke Backend Go
+  - API untuk publish pesan ke RabbitMQ http://localhost:3000/api/tenants/{TENANT_ID}/publish
+
+## Pengujian
+
+### Menjalankan Aplikasi
+
+1. Menjalankan aplikasi lengkap dengan Docker Compose:
    ```bash
+   # Menggunakan Docker
+   docker-compose up -d --build 
+   
+   # atau tanpa --build jika tanpa rebuild
+   
+   docker-compose up -d
+
+   # Menggunakan nerdctl
+   nerdctl compose up -d --build
+   
+   # atau tanpa --build jika tanpa rebuild
+   
    nerdctl compose up -d
-   # atau
-   docker compose up -d
    ```
 
-2. Untuk menghentikan stack aplikasi:
+2. Menjalankan stack monitoring:
    ```bash
-   nerdctl compose down
-   # atau
-   docker compose down
-   ```
+   # Menggunakan Docker
+   docker-compose -f backend-golang/docker-compose.monitoring.yml up -d
 
-## Cara Menjalankan Monitoring (Prometheus & Grafana)
-
-1. Jalankan stack monitoring:
-   ```bash
+   # Menggunakan nerdctl
    nerdctl compose -f backend-golang/docker-compose.monitoring.yml up -d
-   # atau
-   docker compose -f backend-golang/docker-compose.monitoring.yml up -d
    ```
 
-2. Untuk menghentikan stack monitoring:
+### Memeriksa Status Layanan
+
+1. Memeriksa status container:
    ```bash
-   nerdctl compose -f backend-golang/docker-compose.monitoring.yml down
-   # atau
-   docker compose -f backend-golang/docker-compose.monitoring.yml down
+   # Menggunakan Docker
+   docker-compose ps
+
+   # Menggunakan nerdctl
+   nerdctl compose ps
    ```
 
-## Akses Monitoring
-
-- **Prometheus:** http://localhost:9090
-- **Grafana:** http://localhost:3000 (user: admin, password: admin123)
-- **Alertmanager:** http://localhost:9093
-
-> **Catatan:**
-> Stack aplikasi dan stack monitoring dipisahkan agar lebih modular dan mudah di-maintain. Jalankan keduanya sesuai kebutuhan.
-
----
-
-## Cara Menjalankan Test Backend Golang
-
-1. Build image backend-golang:
+2. Melihat log aplikasi:
    ```bash
-   nerdctl compose -f backend-golang/docker-compose.test.yml build
-   ```   
+   # Menggunakan Docker
+   docker-compose logs -f backend-golang
 
-2. Jalankan test backend-golang:
-   ```bash
-   nerdctl compose -f backend-golang/docker-compose.test.yml up --abort-on-container-exit
-   # atau
-   docker compose -f backend-golang/docker-compose.test.yml up --abort-on-container-exit
+   # Menggunakan nerdctl
+   nerdctl logs -f jatis-sample-stack-golang-backend-golang-1
    ```
 
-3. Hasil test akan muncul di terminal. Untuk menghentikan dan membersihkan container test:
+3. Memeriksa database:
    ```bash
-   nerdctl compose -f backend-golang/docker-compose.test.yml down
-   # atau
-   docker compose -f backend-golang/docker-compose.test.yml down
+   # Menggunakan Docker
+   docker exec -it jatis-sample-stack-golang-postgres-1 psql -U postgres -d sample_db
+
+   # Menggunakan nerdctl
+   nerdctl exec -it jatis-sample-stack-golang-postgres-1 psql -U postgres -d sample_db
    ```
 
-## Cara Update Dependencies Go
+4. Memeriksa RabbitMQ:
+   ```bash
+   # Menggunakan Docker
+   docker exec -it jatis-sample-stack-golang-rabbitmq-1 rabbitmqctl list_queues
 
-Untuk memperbarui dependencies Go tanpa perlu menginstall Go di komputer lokal, gunakan perintah berikut:
+   # Menggunakan nerdctl
+   nerdctl exec -it jatis-sample-stack-golang-rabbitmq-1 rabbitmqctl list_queues
+   ```
 
-```bash
-nerdctl run --rm -v $(pwd)/backend-golang:/app -w /app golang:1.21-alpine sh -c "apk add --no-cache git && go mod tidy"
-```
+### Menghentikan Aplikasi
 
-## Cara Menjalankan Perintah di Container Menggunakan nerdctl
+1. Menghentikan dan menghapus container:
+   ```bash
+   # Menggunakan Docker
+   docker-compose down
 
-### Menjalankan Query SQL
+   # Menggunakan nerdctl
+   nerdctl compose down
+   ```
 
-Untuk menjalankan query SQL di database PostgreSQL:
+2. Menghentikan, menghapus container, dan menghapus volume:
+   ```bash
+   # Menggunakan Docker
+   docker-compose down -v
 
-```bash
-# Menjalankan query SQL langsung
-nerdctl exec -it jatis-sample-stack-golang-postgres-1 psql -U postgres -d sample_db -c "SELECT * FROM users;"
-nerdctl exec -it jatis-sample-stack-golang-postgres-1 psql -U postgres -d sample_db -c "\dt;"
+   # Menggunakan nerdctl
+   nerdctl compose down -v
+   ```
 
-# Menjalankan file SQL
-nerdctl exec -it jatis-sample-stack-golang-postgres-1 psql -U postgres -d sample_db < path/to/query.sql
-```
 
-### Menjalankan Perintah Go
-
-Untuk menjalankan perintah Go di container:
-
-```bash
-# Menjalankan go mod tidy
-nerdctl exec -it jatis-sample-stack-golang-backend-golang-1 go mod tidy
-
-# Menjalankan go test
-nerdctl exec -it jatis-sample-stack-golang-backend-golang-1go test ./...
-
-# Menjalankan go build
-nerdctl exec -it jatis-sample-stack-golang-backend-golang-1 go build
-
-# Menjalankan go build dengan flag -buildvcs=false (untuk menghindari masalah dengan git)
-nerdctl exec jatis-sample-stack-golang-backend-golang-1 sh -c "cd /app && go build -buildvcs=false -v ./..."
-```
-
-### Menjalankan Perintah di Container Lainnya
-
-```bash
-# Menjalankan perintah di container Redis
-nerdctl exec -it redis redis-cli
-
-# Menjalankan perintah di container Prometheus
-nerdctl exec -it prometheus promtool check config /etc/prometheus/prometheus.yml
-
-# Menjalankan perintah di container Grafana
-nerdctl exec -it grafana grafana-cli plugins list
-```
-
-### Sistem Messaging (RabbitMQ)
-
-Sistem messaging menggunakan RabbitMQ untuk menangani komunikasi antar tenant. Setiap tenant memiliki queue dan consumer sendiri.
-
-#### Struktur Queue
-- Format nama queue: `tenant.{tenant_id}`
-- Exchange: `amq.default`
-- Routing key: `tenant.{tenant_id}`
-
-#### Perintah RabbitMQ
-
-```bash
-# Melihat daftar queue
-nerdctl exec -it jatis-sample-stack-golang-rabbitmq-1 rabbitmqctl list_queues
-
-# Melihat daftar consumer
-nerdctl exec -it jatis-sample-stack-golang-rabbitmq-1 rabbitmqctl list_consumers
-
-# Mengirim pesan ke queue tenant
-nerdctl exec -it jatis-sample-stack-golang-rabbitmq-1 rabbitmqadmin publish exchange=amq.default routing_key="tenant.{tenant_id}" payload='{"text": "Pesan test"}'
-
-# Melihat status consumer tenant
-curl http://localhost:8080/api/tenants/{tenant_id}/consumers
-```
-
-#### Fitur Consumer
-1. **Auto Creation**: Consumer dibuat otomatis saat tenant dibuat
-2. **Health Check**: Status consumer dicek setiap 30 detik
-3. **Auto Recovery**: Consumer yang tidak aktif akan di-restart otomatis
-4. **Cleanup**: Consumer dihapus saat tenant dihapus
-
-#### Format Pesan
-```json
-{
-    "text": "Isi pesan"
-}
-```
-
-> **Catatan:**
-> - Ganti `backend-golang`, `postgres`, `redis`, dll dengan nama container yang sesuai
-> - Gunakan flag `-it` jika perintah membutuhkan interaksi
-> - Gunakan flag `-i` jika perintah hanya membutuhkan input
-> - Gunakan flag `-v` untuk mount volume jika diperlukan
-
+### Dokumentasi Tugas
+Cek folder [docs/](docs/)
