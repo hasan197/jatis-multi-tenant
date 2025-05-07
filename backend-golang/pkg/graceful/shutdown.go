@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"sample-stack-golang/pkg/logger"
+	"github.com/jatis/sample-stack-golang/pkg/logger"
 )
 
 // Package graceful menyediakan utilitas untuk shutdown aplikasi dengan graceful.

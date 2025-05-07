@@ -7,9 +7,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/streadway/amqp"
-	"sample-stack-golang/internal/modules/tenant/domain"
-	"sample-stack-golang/pkg/logger"
-	"sample-stack-golang/pkg/rabbitmq"
+	"github.com/jatis/sample-stack-golang/internal/modules/tenant/domain"
+	"github.com/jatis/sample-stack-golang/pkg/logger"
+	"github.com/jatis/sample-stack-golang/pkg/rabbitmq"
 )
 
 // StartConsumer memulai consumer untuk tenant tertentu

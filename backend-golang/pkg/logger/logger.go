@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 
 	"github.com/sirupsen/logrus"
+	"github.com/jatis/sample-stack-golang/internal/config"
 	"gopkg.in/natefinch/lumberjack.v2"
-	"sample-stack-golang/internal/config"
 )
 
 var (

@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/pgconn"
-	"sample-stack-golang/internal/modules/message/domain"
+	"github.com/jatis/sample-stack-golang/internal/modules/message/domain"
 )
 
 // DBConn adalah interface untuk koneksi database

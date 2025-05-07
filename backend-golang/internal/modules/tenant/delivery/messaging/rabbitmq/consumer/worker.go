@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/streadway/amqp"
-	"sample-stack-golang/internal/modules/tenant/domain"
-	"sample-stack-golang/pkg/graceful"
-	"sample-stack-golang/pkg/infrastructure/metrics"
-	"sample-stack-golang/pkg/logger"
-	"sample-stack-golang/pkg/rabbitmq"
+	"github.com/jatis/sample-stack-golang/internal/modules/tenant/domain"
+	"github.com/jatis/sample-stack-golang/pkg/graceful"
+	"github.com/jatis/sample-stack-golang/pkg/infrastructure/metrics"
+	"github.com/jatis/sample-stack-golang/pkg/logger"
+	"github.com/jatis/sample-stack-golang/pkg/rabbitmq"
 )
 
 // StartWorker memulai worker untuk memproses pesan dari message channel

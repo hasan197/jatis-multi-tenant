@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"sample-stack-golang/internal/modules/message/domain"
+	"github.com/jatis/sample-stack-golang/internal/modules/message/domain"
 )
 
 // MessageUsecase implements message business logic

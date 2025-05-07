@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/streadway/amqp"
-	"sample-stack-golang/pkg/logger"
+	"github.com/jatis/sample-stack-golang/pkg/logger"
 )
 
 const (

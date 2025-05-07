@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"sample-stack-golang/internal/modules/user/domain"
+	"github.com/jatis/sample-stack-golang/internal/modules/user/domain"
 )
 
 type userRepository struct {
@@ -84,18 +84,18 @@ func (r *userRepository) Create(user domain.User) (domain.User, error) {
 		VALUES ($1, $2, $3, $4, $5) 
 		RETURNING id, created_at, updated_at
 	`
-	
+
 	now := time.Now()
 	err := r.pool.QueryRow(
 		context.Background(),
-		query, 
-		user.Name, 
-		user.Email, 
-		user.Password, 
-		now, 
+		query,
+		user.Name,
+		user.Email,
+		user.Password,
+		now,
 		now,
 	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
-	
+
 	if err != nil {
 		return domain.User{}, err
 	}
@@ -111,26 +111,26 @@ func (r *userRepository) Update(user domain.User) (domain.User, error) {
 		WHERE id = $4
 		RETURNING id, name, email, created_at, updated_at
 	`
-	
+
 	now := time.Now()
 	row := r.pool.QueryRow(
 		context.Background(),
-		query, 
-		user.Name, 
-		user.Email, 
-		now, 
+		query,
+		user.Name,
+		user.Email,
+		now,
 		user.ID,
 	)
-	
+
 	var updatedUser domain.User
 	err := row.Scan(
-		&updatedUser.ID, 
-		&updatedUser.Name, 
-		&updatedUser.Email, 
-		&updatedUser.CreatedAt, 
+		&updatedUser.ID,
+		&updatedUser.Name,
+		&updatedUser.Email,
+		&updatedUser.CreatedAt,
 		&updatedUser.UpdatedAt,
 	)
-	
+
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.User{}, errors.New("user not found")
@@ -144,15 +144,15 @@ func (r *userRepository) Update(user domain.User) (domain.User, error) {
 // Delete menghapus user dari database
 func (r *userRepository) Delete(id uint) error {
 	query := `DELETE FROM users WHERE id = $1`
-	
+
 	result, err := r.pool.Exec(context.Background(), query, id)
 	if err != nil {
 		return err
 	}
-	
+
 	if result.RowsAffected() == 0 {
 		return errors.New("user not found")
 	}
-	
+
 	return nil
-} 
+}

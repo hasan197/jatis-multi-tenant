@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"sample-stack-golang/internal/modules/tenant/delivery/messaging/rabbitmq/consumer"
-	"sample-stack-golang/internal/modules/tenant/domain"
-	"sample-stack-golang/pkg/logger"
+	"github.com/jatis/sample-stack-golang/internal/modules/tenant/delivery/messaging/rabbitmq/consumer"
+	"github.com/jatis/sample-stack-golang/internal/modules/tenant/domain"
+	"github.com/jatis/sample-stack-golang/pkg/logger"
 )
 
 // Start memulai tenant manager
