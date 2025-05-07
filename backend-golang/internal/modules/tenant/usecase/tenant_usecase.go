@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"sample-stack-golang/internal/modules/tenant/domain"
-	"sample-stack-golang/pkg/logger"
+	"github.com/jatis/sample-stack-golang/internal/modules/tenant/domain"
+	"github.com/jatis/sample-stack-golang/pkg/logger"
 	"github.com/streadway/amqp"
 )
 

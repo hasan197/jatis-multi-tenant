@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"sample-stack-golang/pkg/logger"
+	"github.com/jatis/sample-stack-golang/pkg/logger"
 )
 
 // LoggingMiddleware adalah middleware untuk logging HTTP request
@@ -14,7 +14,7 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 
 		// Buat response writer wrapper untuk capture status code
 		rw := newResponseWriter(w)
-		
+
 		// Eksekusi handler
 		next.ServeHTTP(rw, r)
 
@@ -43,4 +43,4 @@ func newResponseWriter(w http.ResponseWriter) *responseWriter {
 func (rw *responseWriter) WriteHeader(code int) {
 	rw.statusCode = code
 	rw.ResponseWriter.WriteHeader(code)
-} 
+}

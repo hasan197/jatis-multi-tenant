@@ -2,7 +2,8 @@ package fixtures
 
 import (
 	"time"
-	"sample-stack-golang/internal/config"
+
+	"github.com/jatis/sample-stack-golang/internal/config"
 )
 
 // TestUser represents a test user fixture
@@ -61,4 +62,4 @@ func TestConfig() *config.Config {
 			Env:     "test",
 		},
 	}
-} 
+}

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"sample-stack-golang/internal/config"
+	"github.com/jatis/sample-stack-golang/internal/config"
 )
 
 // ConfigContainer adalah interface untuk mengakses konfigurasi
@@ -55,10 +55,10 @@ func InitializeConfig() (ConfigContainer, error) {
 	// Test database connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	if err := pool.Ping(ctx); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
 	return NewConfigContainer(cfg, pool), nil
-} 
+}

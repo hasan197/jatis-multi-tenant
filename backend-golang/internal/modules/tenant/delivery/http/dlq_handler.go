@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/jatis/sample-stack-golang/pkg/infrastructure/metrics"
+	"github.com/jatis/sample-stack-golang/pkg/logger"
 	"github.com/labstack/echo/v4"
-	"sample-stack-golang/pkg/infrastructure/metrics"
-	"sample-stack-golang/pkg/logger"
 )
 
 // GetDLQStatus handles getting dead-letter queue status for a tenant
@@ -40,11 +40,11 @@ func (h *TenantHandler) GetDLQStatus(c echo.Context) error {
 			"queue":     dlqName,
 			"error":     err,
 		}).Warn("[DLQ] Failed to inspect DLQ, it may not exist yet")
-		
+
 		// DLQ mungkin belum ada, bukan error
 		// Update Prometheus metrics for DLQ with zero values
 		metrics.UpdateDLQMetrics(tenantID, 0)
-	
+
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"exists":        false,
 			"messageCount":  0,
@@ -53,9 +53,9 @@ func (h *TenantHandler) GetDLQStatus(c echo.Context) error {
 	}
 
 	logger.Log.WithFields(map[string]interface{}{
-		"tenant_id":     tenantID,
-		"queue":         dlqName,
-		"message_count": dlq.Messages,
+		"tenant_id":      tenantID,
+		"queue":          dlqName,
+		"message_count":  dlq.Messages,
 		"consumer_count": dlq.Consumers,
 	}).Info("[DLQ] DLQ status checked")
 

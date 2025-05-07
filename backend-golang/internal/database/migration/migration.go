@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jatis/sample-stack-golang/internal/config"
 	_ "github.com/lib/pq"
-	"sample-stack-golang/internal/config"
 )
 
 // Migration represents a database migration
@@ -334,4 +334,4 @@ func rollbackMigration(ctx context.Context, pool *sql.DB, migration *Migration) 
 	}
 
 	return nil
-} 
+}

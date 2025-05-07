@@ -7,21 +7,21 @@ import (
 	"os"
 	"time"
 
+	"github.com/go-playground/validator/v10"
+	_ "github.com/jatis/sample-stack-golang/docs" // swagger docs
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/go-playground/validator/v10"
 	_ "github.com/lib/pq"
-	_ "sample-stack-golang/docs" // swagger docs
-	
-	"sample-stack-golang/internal/config"
-	"sample-stack-golang/internal/di"
-	"sample-stack-golang/pkg/infrastructure/metrics"
-	"sample-stack-golang/pkg/graceful"
-	userHttp "sample-stack-golang/internal/modules/user/delivery/http"
-	tenantHttp "sample-stack-golang/internal/modules/tenant/delivery/http"
-	messageHttp "sample-stack-golang/internal/modules/message/delivery/http"
-	"sample-stack-golang/pkg/logger"
-	"github.com/swaggo/echo-swagger"
+
+	"github.com/jatis/sample-stack-golang/internal/config"
+	"github.com/jatis/sample-stack-golang/internal/di"
+	messageHttp "github.com/jatis/sample-stack-golang/internal/modules/message/delivery/http"
+	tenantHttp "github.com/jatis/sample-stack-golang/internal/modules/tenant/delivery/http"
+	userHttp "github.com/jatis/sample-stack-golang/internal/modules/user/delivery/http"
+	"github.com/jatis/sample-stack-golang/pkg/graceful"
+	"github.com/jatis/sample-stack-golang/pkg/infrastructure/metrics"
+	"github.com/jatis/sample-stack-golang/pkg/logger"
+	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
 // @title Sample Stack Golang API
@@ -51,20 +51,20 @@ func (cv *CustomValidator) Validate(i interface{}) error {
 
 func main() {
 	fmt.Println("Starting application with hot reload...")
-	
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 	fmt.Println("Configuration loaded successfully")
-	
+
 	// Inisialisasi logger
 	if err := logger.InitLogger(cfg); err != nil {
 		log.Fatal("Failed to initialize logger:", err)
 	}
 	fmt.Println("Logger initialized successfully")
-	
+
 	fmt.Println("Initializing DI container...")
 
 	// Initialize service
@@ -87,7 +87,9 @@ func main() {
 	shutdownManager := graceful.NewShutdownManager(e, service.Close)
 
 	// Set shutdown manager for tenant manager if available
-	if tenantManager, ok := service.TenantUseCase.(interface{ SetShutdownManager(*graceful.ShutdownManager) }); ok {
+	if tenantManager, ok := service.TenantUseCase.(interface {
+		SetShutdownManager(*graceful.ShutdownManager)
+	}); ok {
 		tenantManager.SetShutdownManager(shutdownManager)
 	}
 
@@ -103,10 +105,10 @@ func main() {
 	// Health check endpoint
 	e.GET("/health", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]interface{}{
-			"status":    "ok",
-			"message":   "Server is running with hot reload!",
-			"version":   cfg.App.Version,
-			"env":       cfg.App.Env,
+			"status":  "ok",
+			"message": "Server is running with hot reload!",
+			"version": cfg.App.Version,
+			"env":     cfg.App.Env,
 		})
 	})
 
@@ -118,7 +120,7 @@ func main() {
 			"version":   cfg.App.Version,
 		})
 	})
-	
+
 	// Initialize handlers
 	userHandler := userHttp.NewUserHandler(service.UserUseCase)
 	tenantHandler := tenantHttp.NewTenantHandler(service.TenantUseCase)
@@ -146,4 +148,4 @@ func main() {
 	shutdownManager.WaitForShutdown()
 
 	fmt.Println("Server shutdown complete")
-} 
+}

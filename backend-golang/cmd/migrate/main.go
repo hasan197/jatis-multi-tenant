@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 
-	"sample-stack-golang/internal/config"
-	"sample-stack-golang/internal/database/migration"
+	"github.com/jatis/sample-stack-golang/internal/config"
+	"github.com/jatis/sample-stack-golang/internal/database/migration"
 )
 
 func main() {
@@ -31,4 +31,4 @@ func main() {
 	if err := migration.RunMigrations(cfg); err != nil {
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
-} 
+}

@@ -7,9 +7,9 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/sirupsen/logrus"
-	
-	"sample-stack-golang/internal/modules/user/domain"
-	"sample-stack-golang/pkg/logger"
+
+	"github.com/jatis/sample-stack-golang/internal/modules/user/domain"
+	"github.com/jatis/sample-stack-golang/pkg/logger"
 )
 
 type UserHandler struct {
@@ -21,7 +21,7 @@ type UserHandler struct {
 func NewUserHandler(userUseCase domain.UserUseCase) *UserHandler {
 	return &UserHandler{
 		userUseCase: userUseCase,
-		logger:      logger.WithContext(map[string]interface{}{
+		logger: logger.WithContext(map[string]interface{}{
 			"component": "user_handler",
 			"version":   "1.0",
 		}),
@@ -51,9 +51,9 @@ func (h *UserHandler) getRequestContext(c echo.Context) map[string]interface{} {
 func (h *UserHandler) GetUsers(c echo.Context) error {
 	ctx := h.getRequestContext(c)
 	log := h.logger.WithFields(ctx)
-	
+
 	log.Info("memulai request get users")
-	
+
 	users, err := h.userUseCase.GetUsers()
 	if err != nil {
 		log.WithError(err).WithField("error_type", "internal_error").Error("gagal mendapatkan users")
@@ -61,12 +61,12 @@ func (h *UserHandler) GetUsers(c echo.Context) error {
 			"error": err.Error(),
 		})
 	}
-	
+
 	log.WithFields(map[string]interface{}{
 		"total_users": len(users),
 		"duration":    time.Since(time.Now()),
 	}).Info("berhasil mendapatkan users")
-	
+
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"data": users,
 	})
@@ -88,9 +88,9 @@ func (h *UserHandler) GetUser(c echo.Context) error {
 	ctx := h.getRequestContext(c)
 	ctx["user_id"] = idParam
 	log := h.logger.WithFields(ctx)
-	
+
 	log.Info("memulai request get user")
-	
+
 	id, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
 		log.WithError(err).WithField("error_type", "validation_error").Error("invalid user id")
@@ -98,7 +98,7 @@ func (h *UserHandler) GetUser(c echo.Context) error {
 			"error": "Invalid user ID",
 		})
 	}
-	
+
 	user, err := h.userUseCase.GetUser(uint(id))
 	if err != nil {
 		log.WithError(err).WithFields(map[string]interface{}{
@@ -109,13 +109,13 @@ func (h *UserHandler) GetUser(c echo.Context) error {
 			"error": err.Error(),
 		})
 	}
-	
+
 	log.WithFields(map[string]interface{}{
 		"user_id":  user.ID,
 		"email":    user.Email,
 		"duration": time.Since(time.Now()),
 	}).Info("berhasil mendapatkan user")
-	
+
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"data": user,
 	})
@@ -134,22 +134,22 @@ func (h *UserHandler) GetUser(c echo.Context) error {
 func (h *UserHandler) CreateUser(c echo.Context) error {
 	ctx := h.getRequestContext(c)
 	log := h.logger.WithFields(ctx)
-	
+
 	log.Info("memulai request create user")
-	
+
 	var userInput struct {
 		Name     string `json:"name" validate:"required"`
 		Email    string `json:"email" validate:"required,email"`
 		Password string `json:"password" validate:"required,min=6"`
 	}
-	
+
 	if err := c.Bind(&userInput); err != nil {
 		log.WithError(err).WithField("error_type", "validation_error").Error("gagal parse request body")
 		return c.JSON(http.StatusBadRequest, map[string]interface{}{
 			"error": err.Error(),
 		})
 	}
-	
+
 	// Validasi input
 	if err := c.Validate(&userInput); err != nil {
 		log.WithError(err).WithField("error_type", "validation_error").Error("validasi input gagal")
@@ -157,19 +157,19 @@ func (h *UserHandler) CreateUser(c echo.Context) error {
 			"error": err.Error(),
 		})
 	}
-	
+
 	// Log data sensitif dengan level debug
 	log.WithFields(map[string]interface{}{
 		"name":  userInput.Name,
 		"email": userInput.Email,
 	}).Debug("data user dari request")
-	
+
 	user := domain.User{
 		Name:     userInput.Name,
 		Email:    userInput.Email,
 		Password: userInput.Password,
 	}
-	
+
 	createdUser, err := h.userUseCase.CreateUser(user)
 	if err != nil {
 		log.WithError(err).WithFields(map[string]interface{}{
@@ -180,13 +180,13 @@ func (h *UserHandler) CreateUser(c echo.Context) error {
 			"error": err.Error(),
 		})
 	}
-	
+
 	log.WithFields(map[string]interface{}{
 		"user_id":  createdUser.ID,
 		"email":    createdUser.Email,
 		"duration": time.Since(time.Now()),
 	}).Info("user berhasil dibuat")
-	
+
 	return c.JSON(http.StatusCreated, map[string]interface{}{
 		"data": createdUser,
 	})
@@ -209,9 +209,9 @@ func (h *UserHandler) UpdateUser(c echo.Context) error {
 	ctx := h.getRequestContext(c)
 	ctx["user_id"] = idParam
 	log := h.logger.WithFields(ctx)
-	
+
 	log.Info("memulai request update user")
-	
+
 	id, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
 		log.WithError(err).WithField("error_type", "validation_error").Error("invalid user id")
@@ -219,20 +219,20 @@ func (h *UserHandler) UpdateUser(c echo.Context) error {
 			"error": "Invalid user ID",
 		})
 	}
-	
+
 	var userInput struct {
 		Name     string `json:"name" validate:"required"`
 		Email    string `json:"email" validate:"required,email"`
 		Password string `json:"password" validate:"omitempty,min=6"`
 	}
-	
+
 	if err := c.Bind(&userInput); err != nil {
 		log.WithError(err).WithField("error_type", "validation_error").Error("gagal parse request body")
 		return c.JSON(http.StatusBadRequest, map[string]interface{}{
 			"error": err.Error(),
 		})
 	}
-	
+
 	// Validasi input
 	if err := c.Validate(&userInput); err != nil {
 		log.WithError(err).WithField("error_type", "validation_error").Error("validasi input gagal")
@@ -240,20 +240,20 @@ func (h *UserHandler) UpdateUser(c echo.Context) error {
 			"error": err.Error(),
 		})
 	}
-	
+
 	// Log data sensitif dengan level debug
 	log.WithFields(map[string]interface{}{
 		"name":  userInput.Name,
 		"email": userInput.Email,
 	}).Debug("data user dari request")
-	
+
 	user := domain.User{
 		ID:       uint(id),
 		Name:     userInput.Name,
 		Email:    userInput.Email,
 		Password: userInput.Password,
 	}
-	
+
 	updatedUser, err := h.userUseCase.UpdateUser(user)
 	if err != nil {
 		log.WithError(err).WithFields(map[string]interface{}{
@@ -265,13 +265,13 @@ func (h *UserHandler) UpdateUser(c echo.Context) error {
 			"error": err.Error(),
 		})
 	}
-	
+
 	log.WithFields(map[string]interface{}{
 		"user_id":  updatedUser.ID,
 		"email":    updatedUser.Email,
 		"duration": time.Since(time.Now()),
 	}).Info("user berhasil diupdate")
-	
+
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"data": updatedUser,
 	})
@@ -293,9 +293,9 @@ func (h *UserHandler) DeleteUser(c echo.Context) error {
 	ctx := h.getRequestContext(c)
 	ctx["user_id"] = idParam
 	log := h.logger.WithFields(ctx)
-	
+
 	log.Info("memulai request delete user")
-	
+
 	id, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
 		log.WithError(err).WithField("error_type", "validation_error").Error("invalid user id")
@@ -303,7 +303,7 @@ func (h *UserHandler) DeleteUser(c echo.Context) error {
 			"error": "Invalid user ID",
 		})
 	}
-	
+
 	if err := h.userUseCase.DeleteUser(uint(id)); err != nil {
 		log.WithError(err).WithFields(map[string]interface{}{
 			"error_type": "delete_error",
@@ -313,11 +313,11 @@ func (h *UserHandler) DeleteUser(c echo.Context) error {
 			"error": err.Error(),
 		})
 	}
-	
+
 	log.WithFields(map[string]interface{}{
 		"user_id":  uint(id),
 		"duration": time.Since(time.Now()),
 	}).Info("user berhasil dihapus")
-	
+
 	return c.NoContent(http.StatusNoContent)
-} 
+}

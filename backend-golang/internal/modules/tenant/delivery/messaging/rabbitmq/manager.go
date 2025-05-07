@@ -5,8 +5,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/streadway/amqp"
-	"sample-stack-golang/internal/modules/tenant/domain"
-	"sample-stack-golang/pkg/graceful"
+	"github.com/jatis/sample-stack-golang/internal/modules/tenant/domain"
+	"github.com/jatis/sample-stack-golang/pkg/graceful"
 )
 
 // TenantManager mengimplementasikan domain.TenantManager untuk RabbitMQ

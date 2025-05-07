@@ -8,9 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-
-	"sample-stack-golang/internal/config"
-	"sample-stack-golang/internal/modules/tenant/domain"
+	"github.com/jatis/sample-stack-golang/internal/config"
+	"github.com/jatis/sample-stack-golang/internal/modules/tenant/domain"
 )
 
 // TenantRepository implements domain.TenantRepository

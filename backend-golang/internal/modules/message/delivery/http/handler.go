@@ -6,8 +6,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
-	"sample-stack-golang/internal/modules/message/domain"
-	"sample-stack-golang/internal/modules/message/usecase"
+	"github.com/jatis/sample-stack-golang/internal/modules/message/domain"
+	"github.com/jatis/sample-stack-golang/internal/modules/message/usecase"
 )
 
 // MessageHandler handles HTTP requests for message

@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jatis/sample-stack-golang/internal/modules/tenant/domain"
+	"github.com/jatis/sample-stack-golang/pkg/infrastructure/metrics"
+	"github.com/jatis/sample-stack-golang/pkg/logger"
 	"github.com/labstack/echo/v4"
 	"github.com/streadway/amqp"
-	"sample-stack-golang/internal/modules/tenant/domain"
-	"sample-stack-golang/pkg/infrastructure/metrics"
-	"sample-stack-golang/pkg/logger"
 )
 
 // TenantHandler handles HTTP requests for tenants
@@ -295,9 +295,9 @@ func (h *TenantHandler) UpdateConcurrency(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
-		"message": "Concurrency configuration updated successfully",
+		"message":   "Concurrency configuration updated successfully",
 		"tenant_id": id,
-		"workers": config.Workers,
+		"workers":   config.Workers,
 	})
 }
 
@@ -323,7 +323,7 @@ func (h *TenantHandler) GetQueueStatus(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to inspect queue"})
 	}
-	
+
 	// Update Prometheus metrics for queue depth and consumer count
 	metrics.UpdateQueueMetrics(tenantID, queueName, float64(queue.Messages), float64(queue.Consumers))
 

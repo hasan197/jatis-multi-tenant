@@ -109,7 +109,7 @@ func Load() (*Config, error) <span class="cov0" title="0">{
 import (
         "database/sql"
         "fmt"
-        "sample-stack-golang/internal/config"
+        "github.com/jatis/sample-stack-golang/internal/config"
 )
 
 // ConfigContainer adalah interface untuk mengakses konfigurasi
@@ -319,10 +319,10 @@ func (lm *LifecycleManager) Services() ServiceContainer <span class="cov0" title
 
 import (
         "database/sql"
-        "sample-stack-golang/internal/config"
-        "sample-stack-golang/internal/modules/user/domain"
-        "sample-stack-golang/internal/modules/user/repository/postgresql"
-        "sample-stack-golang/internal/modules/user/usecase"
+        "github.com/jatis/sample-stack-golang/internal/config"
+        "github.com/jatis/sample-stack-golang/internal/modules/user/domain"
+        "github.com/jatis/sample-stack-golang/internal/modules/user/repository/postgresql"
+        "github.com/jatis/sample-stack-golang/internal/modules/user/usecase"
 )
 
 // ServiceContainer adalah interface untuk mengakses semua service
@@ -368,7 +368,7 @@ import (
         "errors"
         "time"
 
-        "sample-stack-golang/internal/modules/user/domain"
+        "github.com/jatis/sample-stack-golang/internal/modules/user/domain"
 )
 
 type userRepository struct {
@@ -529,7 +529,7 @@ import (
         "log"
         "strings"
         
-        "sample-stack-golang/internal/modules/user/domain"
+        "github.com/jatis/sample-stack-golang/internal/modules/user/domain"
 )
 
 type userUseCase struct {

@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"sample-stack-golang/internal/di"
-	"sample-stack-golang/internal/modules/user/domain"
-	"sample-stack-golang/tests/fixtures"
-	"sample-stack-golang/tests/utils"
+	"github.com/jatis/sample-stack-golang/internal/di"
+	"github.com/jatis/sample-stack-golang/internal/modules/user/domain"
+	"github.com/jatis/sample-stack-golang/tests/fixtures"
+	"github.com/jatis/sample-stack-golang/tests/utils"
 )
 
 type UserTestSuite struct {
@@ -24,22 +24,22 @@ type UserTestSuite struct {
 
 func (s *UserTestSuite) SetupSuite() {
 	s.ctx = utils.TestContext(s.T())
-	
+
 	// Setup container
 	s.container = di.NewContainer()
-	
+
 	// Get database connection
 	var err error
 	s.db, err = utils.GetTestDB()
 	require.NoError(s.T(), err)
-	
+
 	// Run migrations
 	err = utils.MigrateTestDB(s.db)
 	require.NoError(s.T(), err)
-	
+
 	// Register services
 	di.RegisterServices(s.container, s.db, nil)
-	
+
 	// Get user service
 	serviceContainer := di.NewServiceContainer(s.container)
 	s.userService = serviceContainer.GetUserService()
@@ -50,7 +50,7 @@ func (s *UserTestSuite) TearDownSuite() {
 	// Cleanup test data
 	err := utils.CleanupTestDB(s.db)
 	require.NoError(s.T(), err)
-	
+
 	// Close database connection
 	if s.db != nil {
 		s.db.Close()
@@ -61,7 +61,7 @@ func (s *UserTestSuite) TestGetUser() {
 	// Arrange
 	testUsers := fixtures.GetTestUsers()
 	expectedUser := testUsers[0]
-	
+
 	// Create test user first
 	user := domain.User{
 		Name:     expectedUser.Username,
@@ -103,4 +103,4 @@ func (s *UserTestSuite) TestCreateUser() {
 
 func TestUserSuite(t *testing.T) {
 	suite.Run(t, new(UserTestSuite))
-} 
+}

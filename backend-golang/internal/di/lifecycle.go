@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"sample-stack-golang/internal/config"
+	"github.com/jatis/sample-stack-golang/internal/config"
 )
 
 // LifecycleManager mengatur lifecycle dari aplikasi
@@ -93,4 +93,4 @@ func Initialize() (*LifecycleManager, error) {
 	manager := NewLifecycleManager(container, configContainer)
 
 	return manager, nil
-} 
+}
